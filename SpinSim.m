@@ -52,7 +52,7 @@ function SpinSim_OpeningFcn(hObject, eventdata, handles, varargin)
 handles.output = hObject;
 
 %introduce default data
-GameSettings.dt=0.001; %[s]
+GameSettings.dt=0.01; %[s]
 GameSettings.XLim=[0,100]; %[m]
 GameSettings.YLim=[0,100]; %[m]
 GameSettings.TrackWidth=5; %[m]
@@ -176,15 +176,56 @@ handles=guidata(hObject); %Obtain updated handles
 
 MidIntrp=handles.RaceTrack.MidIntrp;
 CarGeo=handles.CarGeometrey;
-for ii=2:size(MidIntrp,1)
-    delete(CarGeo.GraphicHandles);
-    CarGeo.CG=MidIntrp(ii,:);
-    t=MidIntrp(ii,:)-MidIntrp(ii-1,:);
-    Theta=atan2(t(2),t(1));
+
+%initalize
+CG=MidIntrp(1,:);
+t=MidIntrp(2,:)-MidIntrp(1,:);
+Theta=atan2(t(2),t(1));
+CarGeo.CG=CG;
+CarGeo.Theta=Theta;
+
+L=CarGeo.Length;
+CarModel=BicycleKinematicModel(L,CG(1),CG(2),Theta,0);
+
+x0=CG(1)-L/2*cos(Theta);
+y0=CG(2)-L/2*sin(Theta);
+Kdd0=1;
+V=20;
+Controller=PurePursuitController('bicyclekinematicsmodel',MidIntrp,L,x0,y0,Theta,Kdd0);
+
+dt=handles.GameSettings.dt;
+count=0;
+while true
+    [Delta,Q]=Controller.SuggestSteering(V);
+%     disp(Delta);
+    scath=scatter(handles.Ax,Q(1),Q(2),40,[1,0,0]);
+    Psi=(Delta-Theta)/(4*dt);
+    disp(Psi)
+    CarModel.ProgressModel(dt,V,Psi)
+%     disp(CarModel.State(4));
+    Theta=CarModel.State(3);
+    x=CarModel.State(1)+L/2*cos(Theta);
+    y=CarModel.State(2)+L/2*sin(Theta);
+    Controller.UpdatePose(x,y,Theta);
     CarGeo.Theta=Theta;
+    CarGeo.CG=[x,y];
+    
+    if mod(count,10)==0
+    delete(CarGeo.GraphicHandles);
     CarGeo.DrawCar(handles.Ax);
-    pause(0.1);
+    pause(10*dt);
+    end
 end
+
+% for ii=2:size(MidIntrp,1)
+%     delete(CarGeo.GraphicHandles);
+%     CarGeo.CG=MidIntrp(ii,:);
+%     t=MidIntrp(ii,:)-MidIntrp(ii-1,:);
+%     Theta=atan2(t(2),t(1));
+%     CarGeo.Theta=Theta;
+%     CarGeo.DrawCar(handles.Ax);
+%     pause(0.1);
+% end
 
 function Mdown(Ax,event,handles)
 handles=guidata(Ax); %Obtain updated handles
