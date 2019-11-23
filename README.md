@@ -17,7 +17,7 @@ Include codes: Kalman_Filter, Sensors.
 - 6 Half-Bridge (comaptible with servo)
 - Low Side Inkector Output; 24bit timers; RMS current 2[A];   max 60[V];
 - Peak Hold Injector.
-- Low side ignition.
+- Low side ignition
 
 
 #### Communication
