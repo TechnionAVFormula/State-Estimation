@@ -3,6 +3,31 @@ Include codes: Kalman_Filter, Sensors.
 
 # Study:
 
+## MoTeC-130:
+
+### Hardware:
+#### Input:
+- 8 Analog inputs; 12 bits. Full-Scale (-30,35)[V]
+- 2 High-band width KNOCK. 12 bits. Full-Scale (-30,35)[V]
+- 3 Inner accelometeres (G sensors)
+- 7 Universal-Digital 10 bits. Full-Scale (-10.7 , 11.4)[V].
+   compatible with HALL sensors.
+
+#### Output:  
+- 6 Half-Bridge (comaptible with servo)
+- Low Side Inkector Output; 24bit timers; RMS current 2[A];   max 60[V];
+- Peak Hold Injector.
+- Low side ignition.
+
+
+#### Communication
+- CAN-bus 2.0b
+- Ethernet 10/100/
+- 2 X   5[V] Voltage
+- 6.3[V] 
+- Continous Battery Input
+
+
 ## Kalman Filtering
 - [Kalman Filters Videos](https://youtu.be/ul3u2yLPwU0)
 - Kalman Filters Matlab Example: ``` openExample('control/KalmanFilteringExample') ```
