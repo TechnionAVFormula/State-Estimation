@@ -6,9 +6,8 @@ classdef carState < handle
         velocity;
         theta;
         
-        
         %{ Remember to Update:  }%
-        num_values = 4; 
+        numValues = 4; 
     end
     
     methods
@@ -19,10 +18,12 @@ classdef carState < handle
             obj.y_pos = 0;
             obj.velocity = 0;
             obj.theta = 0;
+            
+             obj.numValues = 4; 
         end%creation function
         
         function stateVector  =  vector(obj)
-            stateVector = zeros(1,4);
+            stateVector = zeros(obj.numValues , 1);
             stateVector(1) = obj.x_pos;
             stateVector(2) = obj.y_pos;
             stateVector(3) = obj.velocity;
