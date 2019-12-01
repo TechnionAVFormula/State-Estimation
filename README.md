@@ -32,9 +32,11 @@ Include codes: Kalman_Filter, Sensors.
 - [Kalman Filters Videos](https://youtu.be/ul3u2yLPwU0)
 - Kalman Filters Matlab Example: ``` openExample('control/KalmanFilteringExample') ```
 - [Implementation guide to python](https://towardsdatascience.com/kalman-filters-a-step-by-step-implementation-guide-in-python-91e7e123b968) 
+- [Dynamic model example with Kalman Filtering on Simulink] ```openExample('control/KalmanTimeVaryingExample')```
 
 ## Vehicle Dynamic Modeling
 - Vehicle Dynamics System Matlab Example: ```openExample('ident/idnlgreydemo11') ```
+
 
 
 ## ORB_SLAM2:
