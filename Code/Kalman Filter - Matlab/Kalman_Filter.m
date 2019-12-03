@@ -14,13 +14,13 @@ classdef Kalman_Filter < handle
         ... }%
 
     methods (Access = private)
-%         
-%         function [predicted_state, predicted_error ]  = predict_state(   crnt_state , sensors_data , delta_t) 
-%             %code here  % this is the dynamic model
-%         end
-%         function [crnt_state  , crnt_error    ]  = estimate_state( crnt_state,  predicted_state , predicted_error , sensors_data.measured_state  )
-%             %code here % here we update the 
-%         end
+        
+        function [predicted_state, predicted_error ]  = predict_state(   crnt_state , sensors_data , delta_t) 
+            %code here  % this is the dynamic model
+        end
+        function [crnt_state  , crnt_error    ]  = estimate_state( crnt_state,  predicted_state , predicted_error , sensors_data.measured_state  )
+            %code here % here we update the 
+        end
     end%private methods
     
    
