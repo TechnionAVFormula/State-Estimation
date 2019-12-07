@@ -1,8 +1,9 @@
- classdef Kalman_Filter < handle
+classdef Kalman_Filter < handle
     
     properties (SetAccess = private)
         crnt_state = carState() ; %x
         crnt_error  ;%P
+        
         
         n = 9 ; %dimentionality of system
     end%private properties
@@ -18,14 +19,10 @@
 
     methods (Access = private)
         
-        function [predicted_state, predicted_error ]  = predict_state(    sensors_data , delta_t) 
+        function [predicted_state, predicted_error ]  = predict_state(   crnt_state , sensors_data , delta_t) 
             %%
             X = cell(1 , obj.n);  % sigma points
-            X{1} = obj.crnt_state;
-            for i = 1 : floor(obj.n / 2)
-                disp(i);
-            end
-            
+            X{1}
             
             
         end
