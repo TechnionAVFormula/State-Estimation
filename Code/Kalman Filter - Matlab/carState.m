@@ -5,7 +5,7 @@ classdef carState < handle
         y_pos;
         velocity;
         theta;
-        psi;
+
         
         %{ Remember to Update:  }%
         numValues;
@@ -19,9 +19,9 @@ classdef carState < handle
             obj.y_pos = 0;
             obj.velocity = 0;
             obj.theta = 0;
-            obj.psi = 0;
+
             
-             obj.numValues = 5; 
+             obj.numValues = 4; 
         end%creation function
         
         function stateVector  =  vector(obj)
@@ -30,9 +30,15 @@ classdef carState < handle
             stateVector(2) = obj.y_pos;
             stateVector(3) = obj.velocity;
             stateVector(4) = obj.theta;
-            stateVector(5) = obj.psi;
         end
-       
+        
+        function disp(obj)
+            disp(join(["car state:"]));
+            disp(join(["x=",obj.x_pos]));
+            disp(join(["y=",obj.y_pos]));
+            disp(join(["v=",obj.velocity]));
+            disp(join(["theta=",obj.theta]));
+        end
         
     end%methods
     

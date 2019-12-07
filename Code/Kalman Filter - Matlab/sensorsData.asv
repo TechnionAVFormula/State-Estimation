@@ -11,21 +11,28 @@ classdef sensorsData < handle
         throttle;
         measured_theta;
         
+        
         x_pos;
         y_pos;
     end
     
     methods
+        function measured_state_vector = measured_state(obj)%z
+            measured_state_vector = zeros(1,2)  ;
+            measured_state_vector(1) = obj.x_pos;
+            measured_state_vector(2) = obj.y_pos;
+            measured_state_vector(3) = ( obj.velocity_down_left + obj.velocity_down_right + obj.velocity_up_leftt + obj.velocity_up_right ) /4; 
+            measured_state_vector(4) = obj.measured_theta;
+        end
         
-        function measuredState =    measuredState(obj)
+        function measuredState=measuredState(obj)
             measuredState = carState() ;
             measuredState.x_pos = obj.x_pos;
             measuredState.y_pos = obj.y_pos;
-            measuredState.velocity = ( obj.velocity_down_left + obj.velocity_down_right + obj.velocity_up_leftt + obj.velocity_up_right ) /4; 
-            measuredState.theta= obj.measured_theta;
+            measuredState.velocity = obj.ve;
+            obj.theta = 0;
+            
         end
-        
-  
     end%methods
     
 end%classdef
