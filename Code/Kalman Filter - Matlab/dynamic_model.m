@@ -25,7 +25,7 @@ newState.theta =  rad2deg(atan(        delta_t*crntState.v* tan(deg2rad(sensorsD
 newState.theta = fix_angle(newState.theta);
 
 crntState=newState ;
-disp(crntState);
+% disp(crntState);
 
 end%function
 
