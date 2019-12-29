@@ -1,31 +1,63 @@
 # State-Estimation
 Include codes: Kalman_Filter, Sensors.
 
-# Study:
+# Sensors:
+## SPC speed sensor SP1117
+- measurment freaquency - 8KHz
+- error/resolotion depends on the ditstance between measured magnetic pulses. this is  		based on mechanical design and build and can be measuerd on the car
 
-## MoTeC-130:
+## KR22 rotary potentiometer
+- continuous measurment
+- max operation speed is 150 RPM
+- Resolution - Essentiacilly infinite // this is a direct qoute from the sensor 				datasheet. this will be found more precisely in testing in idle conditions to 			see how irattic the readings are
 
-### Hardware:
-#### Input:
+## KP94B Miniature Linear Position Sensor
+- continuous measurment
+- max operation speed is 10 M/s
+- Resolution - Essentiacilly infinite // this is a direct qoute from the sensor 				datasheet. this will be found more precisely in testing in idle conditions to 			see how irattic the readings are
+
+## KH31 rotary position sensor
+- measurment freaquency - 5KHz
+- measures every 1 degree with an error of 0.1 degrees in measurment
+
+## MM5.10 acceleration sensor (F 02U V01 511-02, F 02U V01 511-91,  F 02U V01 512-02)
+- continuous measurment
+- cutoff frequency - 15,30,60Hz accordingly
+- rotation rate measuring range +-160 deg/s
+- rotation rate error/resolotion - 0.1 deg/s
+- acceleration measuring range +- 4.2 g
+- acceleration error/resolotion - 0.01 g 
+
+
+In summary to get data with the same timestamp from all sensors, we need to measure at 0.833 KHz or 1.2ms
+
+
+# MoTeC-130:
+
+## Hardware:
+### Input:
 - 8 Analog inputs; 12 bits. Full-Scale (-30,35)[V]
 - 2 High-band width KNOCK. 12 bits. Full-Scale (-30,35)[V]
 - 3 Inner accelometeres (G sensors)
 - 7 Universal-Digital 10 bits. Full-Scale (-10.7 , 11.4)[V].
    compatible with HALL sensors.
 
-#### Output:  
+### Output:  
 - 6 Half-Bridge (comaptible with servo)
 - Low Side Inkector Output; 24bit timers; RMS current 2[A];   max 60[V];
 - Peak Hold Injector.
 - Low side ignition
 
 
-#### Communication
+### Communication
 - CAN-bus 2.0b
 - Ethernet 10/100/
 - 2 X   5[V] Voltage
 - 6.3[V] 
 - Continous Battery Input
+
+
+# Study:
 
 
 ## Kalman Filtering
