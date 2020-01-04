@@ -1,22 +1,22 @@
 close all ; clear all; clc;
 load 'Log01'
 format long
-
+T = [];
 %
 crntState  =  carState() ;
 i=1;
 crntState.set_from_elements(Log01.xGPS(i) , Log01.yGPS(i), Log01.WheelSpeedFrontLeft(i) , 20);
 x = crntState.vector();
 
-R  =(  [ [    0.1   , 0      ,   0       ,  0  ]  ;  ... 
-            [     0     ,  0.1  ,   0       ,  0  ]  ; ...
-            [     0     ,    0   ,  1.4     ,  0  ]  ; ...
-            [     0      ,   0   ,   0       ,  2  ]    ]  ).^2 ;
+R  =   [ [    0.9   , 0      ,   0       ,  0  ]  ;  ... 
+            [     0     ,  0.9  ,   0       ,  0  ]  ; ...
+            [     0     ,    0   ,  0.2     ,  0  ]  ; ...
+            [     0      ,   0   ,   0       ,  5  ]    ]  ;
         
-Q  = [   [    0      , 0      ,   0       ,  0  ]  ;  ... 
-            [     0     ,  0     ,   0       ,  0  ]  ; ...
-            [     0     ,    0   ,   0       ,  0  ]  ; ...
-            [     0      ,   0   ,   0       ,  0  ]    ] ;      
+Q  = [   [    0.2      , 0   ,   0       ,  0  ]  ;  ... 
+            [     0     ,  0.2   ,   0       ,  0  ]  ; ...
+            [     0     ,  0     ,   0.2       ,  0  ]  ; ...
+            [     0     ,  0     ,   0          ,  1  ]    ] ;      
         
  P = eye(4);       
  
@@ -45,17 +45,18 @@ z= z.vector;
 [x,P]=ekf(fstate,x,P,hmeas  ,   z  ,   Q   , R) ;
 
 figure(fig1)
-% Estimate:
-hold on
+
 
 if k== 1151
-    disp(x)
+   disp(join(['k=', num2str(k)]))
 end
 if (abs(x(1))  >  1000)
-    disp(x);
-    
+    disp(join(['k=', num2str(k)]))
+    disp(x); 
 end
 
+% Estimate:
+hold on
 plot(x(1) , x(2)   , '.b');
 % GPS:
 if ( Log01.xGPS(k) ~=  Log01.xGPS(k-1)  )
@@ -84,7 +85,7 @@ sensorsData.WheelSpeedFrontLeft = Log01.WheelSpeedFrontLeft(k);
 sensorsData.WheelSpeedRearLeft = Log01.WheelSpeedRearLeft(k);
 sensorsData.WheelSpeedRearRight = Log01.WheelSpeedRearRight(k);
 
-sensorsData.steering_angle = Log01.SteeringAngle(k);
+sensorsData.steering_angle = steering_reading2angle(  Log01.SteeringAngle(k)  ) ;
 
 end
 
