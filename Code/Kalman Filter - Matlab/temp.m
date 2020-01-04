@@ -1,12 +1,12 @@
 close all ; clear all; clc;
 load 'Log01'
-Log01.length_data  = length(Log01.WheelSpeedFrontLeft) ;
-%
-x  =  carState() ;
-i=1;
-x.set_from_elements(Log01.GPSPositionLatitude_meters(i) , Log01.GPSPositionLongitude_meters(i), Log01.WheelSpeedFrontLeft(i) , 20);
-x = x.vector;
+format long
 
+%
+crntState  =  carState() ;
+i=1;
+crntState.set_from_elements(Log01.xGPS(i) , Log01.yGPS(i), Log01.WheelSpeedFrontLeft(i) , 20);
+x = crntState.vector();
 
 R  =(  [ [    0.1   , 0      ,   0       ,  0  ]  ;  ... 
             [     0     ,  0.1  ,   0       ,  0  ]  ; ...
@@ -20,34 +20,70 @@ Q  = [   [    0      , 0      ,   0       ,  0  ]  ;  ...
         
  P = eye(4);       
  
- sensorsData = sensorsData() ;
-sensorsData.steering_angle = 12;
- 
-delta_t =0.2;
-fstate =  @(vector)     fstate_from_carDynamics(vector , sensorsData ,  delta_t) ;  
-hmeas= @(carState)   carState;
+sensorsData = sensorsData() ;
+  
+hmeas= @(x)   x;
+GPStheta = 0 ;
 
 %%
 fig1 = figure(1);
-for k  = 1 : Log01.length_data
+for k  = 100 :    Log01.length_data - 1
+
+sensorsData = updateSensorsData(Log01 , k , sensorsData);
+delta_t = Log01.delta_time;
+
+fstate =  @(vector)     fstate_from_carDynamics(vector , sensorsData ,  delta_t) ;
 
 z         = carState( );
-z.set_from_elements(Log01.GPSPositionLatitude_meters(k) , Log01.GPSPositionLongitude_meters(k), Log01.WheelSpeedFrontLeft(k) , 20);
+
+GPStheta = estimate_theta_from_GPS(Log01 , k , GPStheta) ;
+
+z.set_from_elements(Log01.xGPS(k) , Log01.yGPS(k), Log01.WheelSpeedFrontLeft(k) , GPStheta ) ;
 z= z.vector;
 
 %[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
 [x,P]=ekf(fstate,x,P,hmeas  ,   z  ,   Q   , R) ;
 
 figure(fig1)
+% Estimate:
 hold on
 plot(x(1) , x(2)   , '.b');
-hold on
-plot(Log01.GPSPositionLatitude_meters(k)   ,  Log01.GPSPositionLongitude_meters(k) , '.r'    )
+% GPS:
+if ( Log01.xGPS(k) ~=  Log01.xGPS(k-1)  )
+    hold on
+    plot(  Log01.xGPS(k)   ,  Log01.yGPS(k) , '*r'    )
+    drawnow
+end
+
 
 end % for k
 %%
 function  out =    fstate_from_carDynamics(vector , sensorsData ,  delta_t)
-    carState1 = dynamic_model(vector , sensorsData ,  delta_t);
-    out = carState1.vector;
-    return
+    
+crntState = carState();
+crntState.set_from_vector(vector);
+    
+newState = dynamic_model(crntState , sensorsData ,  delta_t);
+out = newState.vector();
+
+end
+
+function sensorsData = updateSensorsData(Log01 , k , sensorsData)
+
+%FrontRight is dead
+sensorsData.WheelSpeedFrontLeft = Log01.WheelSpeedFrontLeft(k);
+sensorsData.WheelSpeedRearLeft = Log01.WheelSpeedRearLeft(k);
+sensorsData.WheelSpeedRearRight = Log01.WheelSpeedRearRight(k);
+
+sensorsData.steering_angle = Log01.SteeringAngle(k);
+
+end
+
+function GPStheta = estimate_theta_from_GPS(Log01 , k , previousTheta)
+theta = rad2deg( tan(  (Log01.yGPS(k+1) - Log01.yGPS(k) ) /(Log01.xGPS(k+1) - Log01.xGPS(k) )   ) )  ;
+if ( isnan(theta) ) 
+    GPStheta = previousTheta;
+else
+    GPStheta = theta;
+end
 end

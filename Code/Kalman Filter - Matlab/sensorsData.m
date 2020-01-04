@@ -1,10 +1,10 @@
 classdef sensorsData < handle
     
     properties 
-        velocity_up_right;
-        velocity_down_right;
-        velocity_up_leftt;
-        velocity_down_left;
+%         velocity_up_right;
+        WheelSpeedFrontLeft;
+        WheelSpeedRearRight;
+        WheelSpeedRearLeft;
         accelerate_forward;
         accelerate_side;
         steering_angle;  %angel between cars' wheels and main_frame's axis
@@ -25,6 +25,9 @@ classdef sensorsData < handle
             measuredState.theta= obj.measured_theta;
         end
         
+         function MeanVelocity =    m_velocity(obj)
+           MeanVelocity =  (obj.WheelSpeedFrontLeft + obj.WheelSpeedRearLeft+ obj.WheelSpeedRearRight) / 3;
+        end
   
     end%methods
     
