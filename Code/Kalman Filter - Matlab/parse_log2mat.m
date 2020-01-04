@@ -1,4 +1,4 @@
-function outStruct = parse_log2mat(fullpath)
+%  outStruct = parse_log2mat(fullpath)
 %%
 clear all; clc;
 tic;
@@ -37,8 +37,8 @@ for i = 1 : length_data
     outStruct.VehicleGPSPositionLongitude_deg(i,1) =  str2double(  table.VehicleGPSPositionLongitude{i + start_of_data - 1 } )  ;       
     %convert to meters
     if i == 1
-        outStruct.GPSPositionLatitude_meters(i,1)    = 0;
-        outStruct.GPSPositionLongitude_meters(i,1) = 0;
+        outStruct.GPSPositionX(i,1)    = 0;
+        outStruct.GPSPositionY(i,1)    = 0;
     else
         latlon0 =  [outStruct.VehicleGPSPositionLatitude_deg(1)  ,  outStruct.VehicleGPSPositionLongitude_deg(1)];
         %compute Latitued (longtitude const): 
@@ -63,4 +63,5 @@ outStruct.delta_time = outStruct.time(3) - outStruct.time(2);
 outStruct.length_data = length_data;
 toc;
 disp(outStruct);
-end %function
+
+

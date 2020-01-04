@@ -1,9 +1,6 @@
-function newState = dynamic_model(vector , sensorsData , delta_t)
+function newState = dynamic_model(crntState , sensorsData , delta_t)
 %%
 
-crntState = carState()  ;
-crntState.set_from_vector(vector);
-%
 carModel = struct( 'm' , 1250 , ...  %mass  [Kg]
                                 'P' , 100000 , ... %Peak Engine Power [W]
                                 'A' , 1 , ... surface area [m^2]
@@ -24,8 +21,6 @@ newState.v= (delta_t/carModel.m )* carModel.P*fake_acceleration_factor   +   crn
 newState.theta =  rad2deg(atan(        delta_t*crntState.v* tan(deg2rad(sensorsData.steering_angle))  /carModel.L    ))  + crntState.theta ;
 newState.theta = fix_angle(newState.theta);
 
-crntState=newState ;
-% disp(crntState);
 
 end%function
 

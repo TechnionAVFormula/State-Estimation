@@ -1,4 +1,4 @@
-clear all; clc;
+close all ; clear all; clc;
 load 'Log01'
 Log01.length_data  = length(Log01.WheelSpeedFrontLeft) ;
 %
@@ -27,17 +27,15 @@ delta_t =0.2;
 fstate =  @(vector)     fstate_from_carDynamics(vector , sensorsData ,  delta_t) ;  
 hmeas= @(carState)   carState;
 
+%%
 fig1 = figure(1);
 for k  = 1 : Log01.length_data
 
- 
-    
 z         = carState( );
 z.set_from_elements(Log01.GPSPositionLatitude_meters(k) , Log01.GPSPositionLongitude_meters(k), Log01.WheelSpeedFrontLeft(k) , 20);
 z= z.vector;
 
-
-% [x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
+%[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
 [x,P]=ekf(fstate,x,P,hmeas  ,   z  ,   Q   , R) ;
 
 figure(fig1)
@@ -45,7 +43,6 @@ hold on
 plot(x(1) , x(2)   , '.b');
 hold on
 plot(Log01.GPSPositionLatitude_meters(k)   ,  Log01.GPSPositionLongitude_meters(k) , '.r'    )
-
 
 end % for k
 %%
