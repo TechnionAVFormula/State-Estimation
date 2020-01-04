@@ -47,6 +47,15 @@ z= z.vector;
 figure(fig1)
 % Estimate:
 hold on
+
+if k== 1151
+    disp(x)
+end
+if (abs(x(1))  >  1000)
+    disp(x);
+    
+end
+
 plot(x(1) , x(2)   , '.b');
 % GPS:
 if ( Log01.xGPS(k) ~=  Log01.xGPS(k-1)  )

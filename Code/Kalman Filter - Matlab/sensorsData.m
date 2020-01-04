@@ -24,10 +24,6 @@ classdef sensorsData < handle
             measuredState.velocity = ( obj.velocity_down_left + obj.velocity_down_right + obj.velocity_up_leftt + obj.velocity_up_right ) /4; 
             measuredState.theta= obj.measured_theta;
         end
-       function MeanVelocity =    m_velocity(obj)
-           MeanVelocity =  (velocity_down_right+velocity_up_leftt+velocity_down_left)/3;
-
-        end
         
          function MeanVelocity =    m_velocity(obj)
            MeanVelocity =  (obj.WheelSpeedFrontLeft + obj.WheelSpeedRearLeft+ obj.WheelSpeedRearRight) / 3;
