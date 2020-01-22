@@ -73,7 +73,7 @@ A=zeros(m,n);
 h=n*eps;
 for k=1:n
     x1=x;
-    x1(k)=x1(k)+h*i;
+    x1(k)=x1(k)+h*1i;
     temp = imag(fun(x1))  /h ;
     A(:,k)= temp ;
 end

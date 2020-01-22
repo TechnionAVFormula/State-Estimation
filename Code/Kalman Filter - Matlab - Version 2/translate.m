@@ -17,11 +17,13 @@ classdef translate <  handle
             km_per_hour_to_meter_per_second = (10/36) ;
             rear_wheel_coef = (15/8)  ;
             
+            %{  turning cases into actual numbers (Decided in wheelPosition class )}%
             FronLeft     = wheelPosition.FrontLeft;
             FrontRight  = wheelPosition.FrontRight;
             RearLeft      = wheelPosition.RearLeft;
             RearRight    = wheelPosition.RearRight;
             
+            %{  Cases:  }%
             switch wheelPositionNum
                 case FrontRight
                     warning('wheelSpeed2velocity:  FrontRight wheel  sensor is currently dead');
@@ -37,10 +39,11 @@ classdef translate <  handle
                     velocity   = zeros(size(WheelSpeed)) ;
                     
             end%swirch
-            
         end %function 
         
-        function [x , y] = gpsDeg2meters(GPSLatitudeDeg, GPSLongitudeDeg)
+        
+        
+        function [x_north , y_east] = gpsDeg2meters(GPSLatitudeDeg, GPSLongitudeDeg)
             href = 0;
             psio = 90;
             
@@ -59,8 +62,8 @@ classdef translate <  handle
                 warning('gpsDeg2meters:   problem with input [GPSLatitudeDeg , GPSLongitudeDeg]')
             end
             
-            x = flatearth_pos(1);
-            y = flatearth_pos(2);
+            x_north = flatearth_pos(1);
+            y_east    = flatearth_pos(2);
             
         end %function
 

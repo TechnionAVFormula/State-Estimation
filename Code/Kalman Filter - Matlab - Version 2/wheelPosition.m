@@ -13,7 +13,7 @@ classdef wheelPosition < handle
             num = 3;
         end
         function num = FrontRight()
-            warning('wheelPosition:  FrontRight wheel  sensor is currently dead');
+%             warning('wheelPosition:  FrontRight wheel  sensor is currently dead');
             num = 4;
         end
               

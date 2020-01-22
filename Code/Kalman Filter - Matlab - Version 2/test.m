@@ -1,97 +1,139 @@
 close all ; clear all; clc;
 format long
-log = ask_user_for_log_file();
+
+%for real run:
+% log = ask_user_for_log_file();
+%for test:
+temp = struct2cell( load('C:\Users\NGBig\Documents\GitHub\State-Estimation\Code\Kalman Filter - Matlab - Version 2\ParsedLogs\\Log01.mat'))  ;
+log = temp{1};       clear temp;
+
+control = struct( 'is_plotPosition' , true , ...
+                            'is_debug'   ,  false  );
+log_start_index = 500;                        
+
 %% Initial Vals:
 crntState  =  set_initial_carState();
 [P,R,Q]  = initial_cov_mats();
 
 x = crntState.vector();
-sensorsData = sensorsData() ;
+rawSensorsData_updated           = rawSensorsData() ;
+translatedSensorsData_old   = translatedSensorsData();
+translatedSensorsData_new = translatedSensorsData();
+
 hmeas= @(x)   x;
 GPStheta = 0 ;
 
 %%
-fig1 = figure(1);
-for k  = 1  :    Log01.length_data - 1
-
-sensorsData = update_sensorsDate_from_log(log , k , sensorsData);
-delta_t = log.delta_time;
-
-fstateVectpr =  @(vector)     fstate_from_carDynamics(stateVector , sensorsData ,  delta_t) ;
-
-z_vector = update_zVector_from_log(log , k, GPStheta);
-
-
-%[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
-[x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
-
-figure(fig1)
-
-
-if k== 1151
-   disp(join(['k=', num2str(k)]))
-end
-if (abs(x(1))  >  1000)
-    disp(join(['k=', num2str(k)]))
-    disp(x); 
-end
-
-% Estimate:
-hold on
-plot(x(1) , x(2)   , '.b');
-% GPS:
-if ( Log01.xGPS(k) ~=  Log01.xGPS(k-1)  )
-    hold on
-    plot(  Log01.xGPS(k)   ,  Log01.yGPS(k) , '*r'    )
-    drawnow
+if control.is_plotPosition
+    fig1 = figure(1);
+    xlabel("x_{north}")
+    ylabel("y_{east}")
+    plot_struct = 0;
 end
 
 
-end % for k
+length_data  = size(log , 1) ;
+for log_line_indx  = log_start_index  :    length_data
+    
+    %{Get data from logs.  and understand it .   Not in real life }
+    
+    [rawSensorsData_updated , is_legit] = get_crnt_sensorsData_from_log(log , log_line_indx , rawSensorsData_updated );
+    if ~is_legit
+        break
+    end
+    
+    %{Practical in Real Life: }%
+    translatedSensorsData_old.copy_constructor(   translatedSensorsData_new       );
+    translatedSensorsData_new.set_from_rawSensorsData(rawSensorsData_updated) ;
+    delta_t = translatedSensorsData_new.time - translatedSensorsData_old.time;
+
+    
+    %{ Kalman Filter Stuff } %
+    
+    [z_vector , GPStheta ] = update_zVector_from_sensorsData(translatedSensorsData_old, translatedSensorsData_new, GPStheta);
+    fstateVectpr =  @(stateVector)     fstate_from_carDynamics(stateVector , translatedSensorsData_new ,  delta_t) ;
+    
+    %{  Estimate with Kalman Filter or Estimate only with carDynamics:  }
+    [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
+    
+%     if translatedSensorsData_new.is_newGPS
+%         %[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
+%         [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
+%     else
+%         x= fstateVectpr(x);
+%     end
+   
+    
+    
+    if control.is_debug
+        disp("===========================");
+        disp( [ "x:";  x]   );    
+        disp(translatedSensorsData_new);
+    end
+    %{Plot Stuff}
+    if control.is_plotPosition
+        plot_struct =  plot_location(fig1, plot_struct , x ,translatedSensorsData_new  ) ;
+    end
+    
+end % for loop
 %%
 
-
-function  out =    fstate_from_carDynamics(stateVector , sensorsData ,  delta_t)
+function  out =    fstate_from_carDynamics(stateVector , translatedSensorsData ,  delta_t)
     
 crntState = carState();
 crntState.set_from_vector(stateVector);
     
-newState = dynamic_model(crntState , sensorsData ,  delta_t);
+newState = dynamic_model(crntState , translatedSensorsData ,  delta_t);
 out = newState.vector();
 
 end
 
-function sensorsData = update_sensorsDate_from_log(log , k , sensorsData)
+function [new_sensorsData , is_legit] = get_crnt_sensorsData_from_log(log , log_line_indx , given_sensorsData )
+new_sensorsData=given_sensorsData;
 
-%FrontRight is dead
-sensorsData.WheelSpeedFrontLeft = log.WheelSpeedFrontLeft(k);
-sensorsData.WheelSpeedRearLeft = log.WheelSpeedRearLeft(k);
-sensorsData.WheelSpeedRearRight = log.WheelSpeedRearRight(k);
-
-sensorsData.steering_angle = steering_reading2angle(  log.SteeringAngle(k)  ) ;
-
-end
-
-function GPStheta = estimate_theta_from_GPS(Log01 , k , previousTheta)
-theta = rad2deg( tan(  (Log01.yGPS(k+1) - Log01.yGPS(k) ) /(Log01.xGPS(k+1) - Log01.xGPS(k) )   ) )  ;
-if ( isnan(theta) ) 
-    GPStheta = previousTheta;
+%{Get crnt log line and check if legit: }
+crntLine  =log(log_line_indx , :);
+if any(isnan(table2array(crntLine)))   % find if at least 1 element is NaN
+    is_legit = false;
 else
-    GPStheta = theta;
-end
-end
+     is_legit = true;
+end % if
+
+%{parse log into sensors data: }
+%FrontRight is dead
+new_sensorsData.WheelSpeedFrontLeft = crntLine.WheelSpeedFrontLeft;
+new_sensorsData.WheelSpeedRearLeft = crntLine.WheelSpeedRearLeft;
+new_sensorsData.WheelSpeedRearRight = crntLine.WheelSpeedRearRight;
+
+new_sensorsData.steering_angle = crntLine.SteeringAngle;
+
+new_sensorsData.GPS_latitude      = crntLine.VehicleGPSPositionLatitude;
+new_sensorsData.GPS_longtitude = crntLine.VehicleGPSPositionLongitude;
+
+new_sensorsData.time  =  crntLine.Time ; 
+
+% new_sensorsData.accelerate_forward  = !WorkInProgress;
+% new_sensorsData.accelerate_side         = !WorkInProgress;
+
+
+
+end %function
 
 function log =  ask_user_for_log_file()
 
-[name ,path] = uigetfile('*' , 'Choose prepared-log as a .mat file  or a raw-log as a .csv file');
+message_prompt='Choose prepared-log as a .mat file  or a raw-log as a .csv file';
+disp(message_prompt);
+[name ,path] = uigetfile('*' , message_prompt);
 fullPath = [path , filesep , name ];
 [~,~,ext] = fileparts(fullPath) ;
 
 if strcmp(ext , '.csv')
+    disp('Parsing log from .csv file. This may take some time.');
     tic;
     log = parse_log2mat(fullPath);
     toc;
 elseif strcmp(ext , '.mat')
+    disp('Taking a prepared log file');
     temp = struct2cell( load(fullPath))  ;
     log = temp{1};
 else
@@ -101,10 +143,44 @@ end
 
 end%func
 
-function z_vector = update_zVector_from_log(log , k , GPStheta)
+function [z_vector , GPStheta_new ] = update_zVector_from_sensorsData(translatedSensorsData1,translatedSensorsData2, GPStheta_old)
+%     translatedSensorsData2  is more recent than translatedSensorsData1
 
-GPStheta = estimate_theta_from_GPS(log , k , GPStheta) ;
-% tempState.set_from_elements(log.xGPS(k) , log.yGPS(k), log.WheelSpeedFrontLeft(k) , GPStheta ) ;
-                %       x                             y                       Vx                   Vy         Theta
-z_vector =    [ log.xGPS(k)  ;  log.yGPS(k) ] ;
+    z_vector =zeros(5,1);
+    x1 = translatedSensorsData1.x_north;
+    y1 = translatedSensorsData1.y_east;
+    x2 = translatedSensorsData2.x_north;
+    y2 = translatedSensorsData2.y_east;
+        
+    if translatedSensorsData2.is_newGPS
+        GPStheta_new = atan2(y2-y1 , x2-x1);
+        GPStheta_new = rad2deg(GPStheta_new);
+    else
+        GPStheta_new =GPStheta_old;
+    end
+    
+    z_vector(1) = x2;
+    z_vector(2) = y2;
+    z_vector(3) = translatedSensorsData1.mean_velocty * cos(GPStheta_new);  % Vx
+    z_vector(4) = translatedSensorsData1.mean_velocty * sin(GPStheta_new);  % Vy
+    z_vector(5) = GPStheta_new;  % Vy
+
+end%func
+
+function plot_struct =  plot_location(fig1, plot_struct , x  ,translatedSensorsData2)
+
+figure(fig1);
+hold on
+
+%{ Estimate:  }%
+plot(x(1) , x(2)   , '.b');
+drawnow
+% GPS:
+if (translatedSensorsData2.is_newGPS)
+    hold on
+    plot(  translatedSensorsData2.x_north  ,  translatedSensorsData2.y_east  , '*r'    )
+    drawnow
+end
+
+
 end

@@ -1,19 +1,18 @@
-function newState = dynamic_model(crntState , sensorsData , delta_t)
+function newState = dynamic_model(crntState , translatedSensorsData2 , delta_t)
 %%
 carModel = struct('L',1530);                         
 newState = carState();
 
 
 %%
-newState.v= sensorsData.m_velocity() ;
-newState.theta =  delta_t*crntState.v*tan(deg2rad(sensorsData.steering_angle))/carModel.L   + crntState.theta ;
+newState.theta = delta_t*translatedSensorsData2.mean_velocty*tan(deg2rad(translatedSensorsData2.steering_angle))/carModel.L   + crntState.theta ;
 newState.theta = fix_angle(newState.theta );
 
-newState.x =  delta_t* crntState.v *cos( deg2rad(crntState.theta))   + crntState.x ;
-newState.y=  delta_t*crntState.v*sin(deg2rad(crntState.theta))   + crntState.y ;
-%newState.velocity = (delta_t/carModel.m )*(carModel.P *control_input.throttle/crntState.velocity -  carModel.A*carModel.Cd * crntState.velocity*crntState.velocity)  ; 
+newState.x_north =  delta_t*translatedSensorsData2.mean_velocty*cos( deg2rad(crntState.theta))   + crntState.x_north ;
+newState.y_east   =  delta_t* translatedSensorsData2.mean_velocty*sin(deg2rad(crntState.theta))   + crntState.y_east ;
 
-
+newState.Vx = delta_t*0  + crntState.Vx;   %times  0 because we don;t have acceleration for now....
+newState.Vy = delta_t*0  + crntState.Vx;   %times  0 because we don;t have acceleration for now.... 
 end%function
 
 %% ============================== sub-functions ============================== %%

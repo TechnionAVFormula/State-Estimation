@@ -1,8 +1,8 @@
 classdef carState < handle
     
     properties 
-        x;
-        y;
+        x_north;
+        y_east;
         Vx;
         Vy;
         theta;
@@ -15,8 +15,8 @@ classdef carState < handle
 
         function obj = carState()
             %c'tor:
-            obj.x = 0;
-            obj.y= 0;
+            obj.x_north = 0;
+            obj.y_east   = 0;
             obj.Vx= 0;
             obj.Vy =0;
             obj.theta = 0;
@@ -26,8 +26,8 @@ classdef carState < handle
         
         function set_from_elements(obj , x, y , Vx, Vy , theta )
             %c'tor:
-            obj.x= x;
-            obj.y= y;
+            obj.x_north= x;
+            obj.y_east  = y;
             obj.Vx= Vx;
             obj.Vy= Vy;
             obj.theta = theta;
@@ -35,8 +35,8 @@ classdef carState < handle
         
         function set_from_vector(obj , vector)
             %c'tor:
-            obj.x = vector(1);
-            obj.y = vector(2);
+            obj.x_north = vector(1);
+            obj.y_east    = vector(2);
             obj.Vx = vector(3);
             obj.Vy = vector(4);
             obj.theta = vector(5);
@@ -45,8 +45,8 @@ classdef carState < handle
         
         function stateVector  =  vector(obj)
             stateVector = zeros(obj.numValues , 1);
-            stateVector(1) = obj.x;
-            stateVector(2) = obj.y;
+            stateVector(1) = obj.x_north;
+            stateVector(2) = obj.y_east;
             stateVector(3) = obj.Vx;
             stateVector(4) = obj.Vy;
             stateVector(5) = obj.theta;
@@ -54,8 +54,8 @@ classdef carState < handle
         
         function disp(obj)
             disp(join(["car state:"]));
-            disp(join(["x=",obj.x]));
-            disp(join(["y=",obj.y]));
+            disp(join(["x_north=",obj.x_north]));
+            disp(join(["y_east =",obj.y_east  ]));
             disp(join(["Vx=",obj.Vx]));
             disp(join(["Vy=",obj.Vy]));
             disp(join(["theta=",obj.theta]));
