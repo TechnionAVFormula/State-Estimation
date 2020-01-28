@@ -1,4 +1,4 @@
-classdef translate <  handle 
+classdef translate 
     
     methods(Static) 
         

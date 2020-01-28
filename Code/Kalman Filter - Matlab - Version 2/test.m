@@ -7,9 +7,19 @@ format long
 temp = struct2cell( load('C:\Users\NGBig\Documents\GitHub\State-Estimation\Code\Kalman Filter - Matlab - Version 2\ParsedLogs\\Log01.mat'))  ;
 log = temp{1};       clear temp;
 
+
 control = struct( 'is_plotPosition' , true , ...
-                            'is_debug'   ,  false  );
+                            'is_collectMetaData'  , true , ...
+                            'is_debug'   ,  false  ...
+                            );
+
+annimation = struct(  ...
+                           'is_plotTheta' , true , ....
+                           'pause_time'  ,  0.5  ...
+                           );
+                        
 log_start_index = 500;                        
+
 
 %% Initial Vals:
 crntState  =  set_initial_carState();
@@ -28,7 +38,7 @@ if control.is_plotPosition
     fig1 = figure(1);
     xlabel("x_{north}")
     ylabel("y_{east}")
-    plot_struct = 0;
+    plot_struct = struct;
 end
 
 
@@ -55,7 +65,7 @@ for log_line_indx  = log_start_index  :    length_data
     
     %{  Estimate with Kalman Filter or Estimate only with carDynamics:  }
     [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
-    
+%     
 %     if translatedSensorsData_new.is_newGPS
 %         %[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
 %         [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
@@ -63,16 +73,11 @@ for log_line_indx  = log_start_index  :    length_data
 %         x= fstateVectpr(x);
 %     end
    
+  
     
-    
-    if control.is_debug
-        disp("===========================");
-        disp( [ "x:";  x]   );    
-        disp(translatedSensorsData_new);
-    end
     %{Plot Stuff}
     if control.is_plotPosition
-        plot_struct =  plot_location(fig1, plot_struct , x ,translatedSensorsData_new  ) ;
+        plot_struct =  plot_location(fig1, plot_struct , x ,translatedSensorsData_new ,annimation  ) ;
     end
     
 end % for loop
@@ -167,13 +172,13 @@ function [z_vector , GPStheta_new ] = update_zVector_from_sensorsData(translated
 
 end%func
 
-function plot_struct =  plot_location(fig1, plot_struct , x  ,translatedSensorsData2)
+function plot_struct =  plot_location(fig1, plot_struct , x_vector  ,translatedSensorsData2 , annimation)
 
 figure(fig1);
 hold on
 
 %{ Estimate:  }%
-plot(x(1) , x(2)   , '.b');
+plot(x_vector(1) , x_vector(2)   , '.b');
 drawnow
 % GPS:
 if (translatedSensorsData2.is_newGPS)
@@ -182,5 +187,29 @@ if (translatedSensorsData2.is_newGPS)
     drawnow
 end
 
+if annimation.pause_time
+    pause(annimation.pause_time);
+end
+
+if annimation.is_plotTheta
+    theta = x_vector(5);
+    arrow_scale = 2;
+    x = x_vector(1);
+    y = x_vector(2);
+    u = cos(rad2deg(theta));
+    v = sin(rad2deg(theta));
+    if  isempty(fieldnames(plot_struct))
+        plot_struct.thetaArrow = quiver(x,y,u,v );
+        plot_struct.thetaArrow.Color = 'Black';
+%         plot_struct.thetaArrow.LineWidth = 1;
+    else
+         delete(plot_struct.thetaArrow);
+        plot_struct.thetaArrow = quiver(x,y,u,v );
+        plot_struct.thetaArrow.Color = 'Black';
+        plot_struct.thetaArrow.AutoScale;
+        plot_struct.thetaArrow.AutoScaleFactor = arrow_scale;
+%         plot_struct.thetaArrow.LineWidth = 1;
+    end
+end
 
 end
