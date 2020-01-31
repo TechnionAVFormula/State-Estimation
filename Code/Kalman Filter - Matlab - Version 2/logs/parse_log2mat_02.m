@@ -3,9 +3,9 @@ function outTable = parse_log2table_02(fullpath)
 %for test:
 
 clear all; clc;
-folder = 'C:\Users\NGBig\OneDrive - Technion\State Estimation Drive\logs';
-file  = 'log_02_skidpad.csv';
-% [file , folder ] = uigetfile('*');
+% folder = 'C:\Users\NGBig\OneDrive - Technion\State Estimation Drive\logs';
+% file  = 'log_02_skidpad.csv';
+[file , folder ] = uigetfile('*');
 fullpath = join([folder , filesep,  file   ] )    ;
 
 

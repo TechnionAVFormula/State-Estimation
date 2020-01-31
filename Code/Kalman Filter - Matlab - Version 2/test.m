@@ -4,7 +4,7 @@ format long
 %for real run:
 % log = ask_user_for_log_file();
 %for test:
-temp = struct2cell( load('C:\Users\NGBig\Documents\GitHub\State-Estimation\Code\Kalman Filter - Matlab - Version 2\ParsedLogs\\Log01.mat'))  ;
+temp = struct2cell( load('C:\Users\NGBig\Documents\GitHub\State-Estimation\Code\Kalman Filter - Matlab - Version 2\logs\Log01.mat'))  ;
 log = temp{1};       clear temp;
 
 
@@ -14,11 +14,12 @@ control = struct( 'is_plotPosition' , true , ...
                             );
 
 annimation = struct(  ...
+                           'is_nothUp' ,  false , ...
                            'is_plotTheta' , true , ....
-                           'pause_time'  ,  0.5  ...
+                           'pause_time'  ,  0.1  ...
                            );
                         
-log_start_index = 500;                        
+log_start_index = 1;                        
 
 
 %% Initial Vals:
@@ -26,7 +27,7 @@ crntState  =  set_initial_carState();
 [P,R,Q]  = initial_cov_mats();
 
 x = crntState.vector();
-rawSensorsData_updated           = rawSensorsData() ;
+rawSensorsData_updated    =  rawSensorsData() ;
 translatedSensorsData_old   = translatedSensorsData();
 translatedSensorsData_new = translatedSensorsData();
 
@@ -35,20 +36,17 @@ GPStheta = 0 ;
 
 %%
 if control.is_plotPosition
-    fig1 = figure(1);
-    xlabel("x_{north}")
-    ylabel("y_{east}")
-    plot_struct = struct;
+    [fig1 , plot_struct] =plot_init(annimation);
 end
 
-
 length_data  = size(log , 1) ;
-for log_line_indx  = log_start_index  :    length_data
+for log_line_indx  = log_start_index  :   length_data
     
     %{Get data from logs.  and understand it .   Not in real life }
     
     [rawSensorsData_updated , is_legit] = get_crnt_sensorsData_from_log(log , log_line_indx , rawSensorsData_updated );
     if ~is_legit
+        error("log:  data not legit");
         break
     end
     
@@ -63,17 +61,15 @@ for log_line_indx  = log_start_index  :    length_data
     [z_vector , GPStheta ] = update_zVector_from_sensorsData(translatedSensorsData_old, translatedSensorsData_new, GPStheta);
     fstateVectpr =  @(stateVector)     fstate_from_carDynamics(stateVector , translatedSensorsData_new ,  delta_t) ;
     
-    %{  Estimate with Kalman Filter or Estimate only with carDynamics:  }
+%{  Estimate with Kalman Filter or Estimate only with carDynamics:  }
     [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
-%     
+%    
 %     if translatedSensorsData_new.is_newGPS
 %         %[x,P]=ekf(fstate,x,P,hmeas,z,Q,R)
 %         [x,P]=ekf(fstateVectpr,x,P,hmeas  ,   z_vector  ,   Q   , R) ;
 %     else
 %         x= fstateVectpr(x);
 %     end
-   
-  
     
     %{Plot Stuff}
     if control.is_plotPosition
@@ -158,16 +154,15 @@ function [z_vector , GPStheta_new ] = update_zVector_from_sensorsData(translated
     y2 = translatedSensorsData2.y_east;
         
     if translatedSensorsData2.is_newGPS
-        GPStheta_new = atan2(y2-y1 , x2-x1);
-        GPStheta_new = rad2deg(GPStheta_new);
+        GPStheta_new = atan2( y2-y1 , x2-x1 );
     else
         GPStheta_new =GPStheta_old;
     end
     
     z_vector(1) = x2;
     z_vector(2) = y2;
-    z_vector(3) = translatedSensorsData1.mean_velocty * cos(GPStheta_new);  % Vx
-    z_vector(4) = translatedSensorsData1.mean_velocty * sin(GPStheta_new);  % Vy
+    z_vector(3) = translatedSensorsData1.mean_velocty * cos( GPStheta_new);  % Vx
+    z_vector(4) = translatedSensorsData1.mean_velocty * sin( GPStheta_new);  % Vy
     z_vector(5) = GPStheta_new;  % Vy
 
 end%func
@@ -183,8 +178,12 @@ drawnow
 % GPS:
 if (translatedSensorsData2.is_newGPS)
     hold on
-    plot(  translatedSensorsData2.x_north  ,  translatedSensorsData2.y_east  , '*r'    )
-    drawnow
+    if annimation.is_nothUp
+        error('is_nothUp: not supported');
+    else
+        plot(  translatedSensorsData2.x_north  ,  translatedSensorsData2.y_east, '*r'    )
+        drawnow
+    end
 end
 
 if annimation.pause_time
@@ -196,8 +195,8 @@ if annimation.is_plotTheta
     arrow_scale = 2;
     x = x_vector(1);
     y = x_vector(2);
-    u = cos(rad2deg(theta));
-    v = sin(rad2deg(theta));
+    u = cos((theta));
+    v = sin((theta));
     if  isempty(fieldnames(plot_struct))
         plot_struct.thetaArrow = quiver(x,y,u,v );
         plot_struct.thetaArrow.Color = 'Black';
@@ -211,5 +210,29 @@ if annimation.is_plotTheta
 %         plot_struct.thetaArrow.LineWidth = 1;
     end
 end
+
+end
+
+function [fig_out , plot_struct] = plot_init(annimation)
+
+    %For Beautiful Graphs:
+    set(groot, 'defaultAxesXGrid', 'on'); % x grid
+    set(groot, 'defaultAxesYGrid', 'on'); % y grid
+    set(groot, 'defaultAxesBox', 'on'); % plot in a box
+
+    %for toolbars in figures:
+    set(groot,'defaultFigureCreateFcn',@(fig,~)addToolbarExplorationButtons(fig))
+    set(groot,'defaultAxesCreateFcn',@(ax,~)set(ax.Toolbar,'Visible','off'))
+
+    
+    
+    if annimation.is_nothUp
+        error('is_nothUp: not yet supported')
+    else
+        fig_out = figure(1);
+        xlabel("x_{north}")
+        ylabel("y_{east}")
+        plot_struct = struct;
+    end
 
 end
