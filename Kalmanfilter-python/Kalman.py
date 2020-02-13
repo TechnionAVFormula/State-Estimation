@@ -10,6 +10,8 @@ X_init = np.zeros([5, 1])
 P_init = 0.01 * np.eye(len(X_init))
 R = np.array([])
 B = np.array([[1], [2], [3], [4], [5]])
+W = np.diag([0.5 ** 2, 0.5 ** 2, 0.1 ** 2, 0.1 ** 2, 0.01 ** 2])
+print(W)
 
 
 def Prediction5d(X, u, Xd):
@@ -58,11 +60,81 @@ def Covariance_matrix(P, V, X, u, Beta, Steering):
     return P_Pre
 
 
+def Observation_matrix(Sensors_Data, X, Beta):
+    Z = np.array(
+        [
+            [Sensors_Data[0]],
+            [Sensors_Data[1]],
+            [
+                X[2]
+                + DTime
+                * (
+                    Sensors_Data[2] * cos(X[4] + Beta)
+                    + Sensors_Data[3] * sin(X[4] + Beta)
+                )
+            ],
+            [
+                X[3]
+                + DTime
+                * (
+                    Sensors_Data[2] * sin(X[4] + Beta)
+                    - Sensors_Data[3] * cos(X[4] + Beta)
+                )
+            ],
+            [X[4] + DTime * Sensors_Data[4]],
+        ]
+    )
+    Hx = np.array(
+        [
+            [1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 0],
+            [
+                0,
+                0,
+                1,
+                0,
+                -DTime
+                * (
+                    Sensors_Data[2] * sin(X[4] + Beta)
+                    - Sensors_Data[3] * cos(X[4] + Beta)
+                ),
+            ],
+            [
+                0,
+                0,
+                0,
+                1,
+                DTime
+                * (
+                    Sensors_Data[2] * cos(X[4] + Beta)
+                    + Sensors_Data[3] * sin(X[4] + Beta)
+                ),
+            ],
+            [0, 0, 0, 0, 1],
+        ]
+    )
+    return Z, Hx
+
+
+def KalmanGain(P, Hx, W):
+    S = Hx @ P @ np.transpose(Hx) + W
+    K = P @ np.transpose(Hx) @ np.linalg.inv(S)
+    return K, S
+
+
+def State(Xp, K, Z, Hx, Pp):
+    X = Xp + K @ (Z - Xp)
+    P = Pp - K @ np.transpose(Hx) @ Pp
+    return X, P
+
+
 P = 0.1 * np.eye(5)
 V = 0.01 * np.eye(2)
 X = np.array([[1], [2], [2], [2], [0]])
-B = u = np.array([[10000], [0]])
+S = np.array([[1.1], [2.1], [10], [0.1], [0.2]])
+B = u = np.array([[10], [0]])
 Xd = np.array([[11], [9], [5], [12]])
 Xx, Beta, Steering = Prediction5d(X, B, Xd)
+Zz, Hx = Observation_matrix(S, X, Beta)
 P_Pre = Covariance_matrix(P, V, X, B, Beta, Steering)
 print(P_Pre)
