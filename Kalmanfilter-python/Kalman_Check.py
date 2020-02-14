@@ -21,6 +21,7 @@ def Check_Line():
             np.random.rand(1) * 0.1 - 0.05,
             np.random.rand(1) * 0.1 - 0.05,
         ]
+    return (Sensors_data, X, y, t, u)
 
 
 def Check_Circle():
