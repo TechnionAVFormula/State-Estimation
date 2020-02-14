@@ -12,10 +12,12 @@ R = np.array([])
 B = np.array([[1], [2], [3], [4], [5]])
 W = np.diag([0.5 ** 2, 0.5 ** 2, 0.1 ** 2, 0.1 ** 2, 0.01 ** 2])
 print(W)
+# Steering imported from the data
+
+# Steering = np.mod(ma.atan2(Xd[1] - X[1], Xd[0] - X[0]) - X[4], 2 * ma.pi)
 
 
-def Prediction5d(X, u, Xd):
-    Steering = np.mod(ma.atan2(Xd[1] - X[1], Xd[0] - X[0]) - X[4], 2 * ma.pi)
+def KF_Prediction(X, u, Xd, Steering):
     Beta = np.mod(ma.atan2(ma.cos(Steering) * L_Rear, L_Tot), 2 * ma.pi)
     V_tot = np.linalg.norm(X[2:4])
     DTheta = V_tot * ma.cos(Beta) * ma.tan(Steering) / L_Tot
@@ -28,10 +30,6 @@ def Prediction5d(X, u, Xd):
             [X[4] + DTime * DTheta],
         ]
     )
-    return X_Prediction, Beta, Steering
-
-
-def Covariance_matrix(P, V, X, u, Beta, Steering):
     J_x = np.array(
         [
             [1, 0, DTime, 0, -(DTime ** 2) * u[0] * ma.sin(X[4] + Beta)],
@@ -56,32 +54,33 @@ def Covariance_matrix(P, V, X, u, Beta, Steering):
             ],
         ]
     )
-    P_Pre = (J_x @ P @ np.transpose(J_x)) + (J_v @ V @ np.transpose(J_v))
-    return P_Pre
+    P_Prediction = (J_x @ P @ np.transpose(J_x)) + (J_v @ V @ np.transpose(J_v))
+
+    return P_Prediction, X_Prediction
 
 
-def Observation_matrix(Sensors_Data, X, Beta):
+def KF_Update(Sensors_Data, X_Prediction, Beta, P_Prediction, W):
     Z = np.array(
         [
             [Sensors_Data[0]],
             [Sensors_Data[1]],
             [
-                X[2]
+                X_Prediction[2]
                 + DTime
                 * (
-                    Sensors_Data[2] * ma.cos(X[4] + Beta)
-                    + Sensors_Data[3] * ma.sin(X[4] + Beta)
+                    Sensors_Data[2] * ma.cos(X_Prediction[4] + Beta)
+                    + Sensors_Data[3] * ma.sin(X_Prediction[4] + Beta)
                 )
             ],
             [
-                X[3]
+                X_Prediction[3]
                 + DTime
                 * (
-                    Sensors_Data[2] * ma.sin(X[4] + Beta)
-                    - Sensors_Data[3] * ma.cos(X[4] + Beta)
+                    Sensors_Data[2] * ma.sin(X_Prediction[4] + Beta)
+                    - Sensors_Data[3] * ma.cos(X_Prediction[4] + Beta)
                 )
             ],
-            [X[4] + DTime * Sensors_Data[4]],
+            [X_Prediction[4] + DTime * Sensors_Data[4]],
         ]
     )
     Hx = np.array(
@@ -95,8 +94,8 @@ def Observation_matrix(Sensors_Data, X, Beta):
                 0,
                 -DTime
                 * (
-                    Sensors_Data[2] * ma.sin(X[4] + Beta)
-                    - Sensors_Data[3] * ma.cos(X[4] + Beta)
+                    Sensors_Data[2] * ma.sin(X_Prediction[4] + Beta)
+                    - Sensors_Data[3] * ma.cos(X_Prediction[4] + Beta)
                 ),
             ],
             [
@@ -106,25 +105,17 @@ def Observation_matrix(Sensors_Data, X, Beta):
                 1,
                 DTime
                 * (
-                    Sensors_Data[2] * ma.cos(X[4] + Beta)
-                    + Sensors_Data[3] * ma.sin(X[4] + Beta)
+                    Sensors_Data[2] * ma.cos(X_Prediction[4] + Beta)
+                    + Sensors_Data[3] * ma.sin(X_Prediction[4] + Beta)
                 ),
             ],
             [0, 0, 0, 0, 1],
         ]
     )
-    return Z, Hx
-
-
-def KalmanGain(P, Hx, W):
-    S = Hx @ P @ np.transpose(Hx) + W
-    K = P @ np.transpose(Hx) @ np.linalg.inv(S)
-    return K, S
-
-
-def State(Xp, K, Z, Hx, Pp):
-    X = Xp + K @ (Z - Xp)
-    P = Pp - K @ np.transpose(Hx) @ Pp
+    S = Hx @ P_Prediction @ np.transpose(Hx) + W  # Measurement prediction covariance
+    K = P_Prediction @ np.transpose(Hx) @ np.linalg.inv(S)  # KalmanGain
+    X = X_Prediction + K @ (Z - X_Prediction)  # X update
+    P = P_Prediction - K @ np.transpose(Hx) @ P_Prediction  # Covariance update
     return X, P
 
 
@@ -134,7 +125,6 @@ X = np.array([[1], [2], [2], [2], [0]])
 S = np.array([[1.1], [2.1], [10], [0.1], [0.2]])
 B = u = np.array([[10], [0]])
 Xd = np.array([[11], [9], [5], [12]])
-Xx, Beta, Steering = Prediction5d(X, B, Xd)
-Zz, Hx = Observation_matrix(S, X, Beta)
-P_Pre = Covariance_matrix(P, V, X, B, Beta, Steering)
-print(P_Pre)
+# Xx, Beta, Steering = Prediction5d(X, B, Xd)
+# Zz, Hx = Observation_matrix(S, X, Beta)
+# P_Pre = Covariance_matrix(P, V, X, B, Beta, Steering)
