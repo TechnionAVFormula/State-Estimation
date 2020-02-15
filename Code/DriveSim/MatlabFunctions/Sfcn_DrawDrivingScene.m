@@ -35,7 +35,7 @@ block.InputPort(3).SamplingMode   ='Sample';
 
 %Register the properties of the output ports
 %keys pressed
-block.OutputPort(1).Dimensions   = 6; %logical [down,up,right,left,space,left control]
+block.OutputPort(1).Dimensions   = 7; %logical [down,up,right,left,space,left control, left alt]
 block.OutputPort(1).SamplingMode = 'Sample';
 block.OutputPort(1).DatatypeID   = 0;
 %trigger
@@ -135,13 +135,14 @@ if iskeydown(18) %escape
     PushbuttonCallback;
 end
 
-keyspressed=iskeydown([31,33,30,32,23,126]); %check keynames
+keyspressed=iskeydown([31,33,30,32,23,126,128]); %check keynames
 %31 - down arrow - deccelerate
 %33 - up arrow - accelerate
 %30 - turn right
 %32 - turn left
 %23 - space
 %126 - left control
+%128 - left alt
 
 %outputs - keystrkes
 if any(keyspressed)
@@ -151,12 +152,12 @@ if any(keyspressed)
     %Updated Limfactor according to vehicle velocity
     if keyspressed(1)||keyspressed(2)
         TargetAccelerationSign=-keyspressed(1)+keyspressed(2);
-        TargetVelocity=v+(5/3.6)*TargetAccelerationSign; %5 is what is added on each keypress - see slx
+        TargetVelocity=abs(v)+(5/3.6)*TargetAccelerationSign; %5 is what is added on each keypress - see slx
         UserData.LimFactor=10*(TargetVelocity/Vmax)+2;
         set(gcbh,'UserData',UserData); %updates the whole of UserData... unfournate
     end
 else
-    block.OutputPort(1).Data=[0,0,0,0,0,0];
+    block.OutputPort(1).Data=[0,0,0,0,0,0,0];
     block.OutputPort(2).Data=0;
 end
 
@@ -208,7 +209,7 @@ if nargin<2 %figure was not provided in input
     L=block.DialogPrm(2).Data;
     SceneAxes=axes(...
         'parent',       Fig,...
-        'position',     [0.2,0.1,0.9,0.8],... %[Left,Buttom,Height,Width]
+        'position',     [0.25,0.1,0.9,0.8],... %[Left,Buttom,Height,Width]
         'XLim',          2*L*[-1,1],...
         'YLim',          2*L*[-1,1]);
     hold(SceneAxes,'on'); grid(SceneAxes,'on'); axis(SceneAxes,'manual')
