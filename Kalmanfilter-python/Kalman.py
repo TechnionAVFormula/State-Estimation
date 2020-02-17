@@ -1,11 +1,11 @@
 import numpy as np
 import math as ma
 from numpy.random import randn
-from Kalman_Check import Check_Line
+from Kalman_Check import Check_Circle
 import matplotlib.pyplot as plt
 
 # data
-Sensors_Data, X_Ground_Truth, Y_Ground_Truth, Time, u = Check_Line()
+Sensors_Data, X_Ground_Truth, Y_Ground_Truth, Time, u = Check_Circle()
 
 DTime = 0.01
 L_Tot = 1.535  # units [m], from Calculations,Weight Transfer file.
@@ -23,7 +23,10 @@ V = np.diag([0.5 ** 2, 0.1 ** 2])
 
 def KF_Prediction(X, P, u):
     Beta = np.mod(ma.atan2(ma.tan(u[1]) * L_Rear, L_Tot), 2 * ma.pi)
-    V_tot = np.linalg.norm(X[2:4])
+    V_tot = ma.sqrt(
+        ((X[2] + DTime * ma.cos(X[4] + Beta) * u[0]) ** 2)
+        + ((X[3] + DTime * ma.sin(X[4] + Beta) * u[0]) ** 2)
+    )
     DTheta = V_tot * ma.cos(Beta) * ma.tan(u[1]) / L_Tot
     X_Prediction = np.array(
         [

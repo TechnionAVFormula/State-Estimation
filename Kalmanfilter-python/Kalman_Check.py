@@ -42,10 +42,10 @@ def Check_Circle():
     Sensors_data = np.empty([len(t), 5])
     for i in range(0, len(Sensors_data)):
         Sensors_data[i, :] = [
-            X[0, i] + np.random.rand(1) * 0.5 - 0.25,
-            y[0, i] + np.random.rand(1) * 0.5 - 0.25,
-            np.random.rand(1) * 0.1 - 0.05,
-            R / 100 + np.random.rand(1) * 0.1 - 0.05,
+            X[0, i] + np.random.rand(1) * 1 - 0.5,
+            y[0, i] + np.random.rand(1) * 1 - 0.5,
+            np.random.rand(1) * 0.1 - 0.5,
+            R / 100 + np.random.rand(1) * 0.1 - 0.5,
             1 / 10 + np.random.rand(1) * 0.01 - 0.005,
         ]
     return (Sensors_data, X, y, t, u)
