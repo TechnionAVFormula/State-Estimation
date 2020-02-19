@@ -145,6 +145,7 @@ class Kalman:
                 ],
             ]
         )
+
         self.Covariance_Prediction = (
             Jacobian_State @ self.Covariance_Update @ np.transpose(Jacobian_State)
         ) + (
@@ -216,11 +217,13 @@ class Kalman:
             ],
             dtype="float",
         )
+
         S = (
             Jacobian_Measure_Model
             @ self.Covariance_Prediction
             @ np.transpose(Jacobian_Measure_Model)
             + self.Measure_Noise
+        )
         Kalman_Gain = (
             self.Covariance_Prediction
             @ np.transpose(Jacobian_Measure_Model)
@@ -231,6 +234,8 @@ class Kalman:
         )
         self.Covariance_Update = (
             self.Covariance_Prediction
-            + Kalman_Gain @ np.transpose(Jacobian_Measure_Model) @ self.Covariance_Prediction
+            + Kalman_Gain
+            @ np.transpose(Jacobian_Measure_Model)
+            @ self.Covariance_Prediction
         )
 
