@@ -139,7 +139,6 @@ def KF_Update(Sensors_Data, X_Prediction, Beta, P_Prediction):
 # print(X_Ground_Truth[1,1])
 X = np.empty([5, len(Sensors_Data)])
 P, Xx, Beta = KF_Prediction(X_init, P_init, u[:, 0])
-print(Sensors_Data[0, :])
 for i in range(len(Sensors_Data)):
     Xx, P = KF_Update(Sensors_Data[i, :], Xx, Beta, P)
     X[:, i : i + 1] = Xx
@@ -148,7 +147,8 @@ for i in range(len(Sensors_Data)):
 
 plt.figure(1)
 plt.plot(X[0, :], X[1, :], label="State")
-plt.plot(X_Ground_Truth[:], 0 * X_Ground_Truth, label="Ground Truth")
+print(Y_Ground_Truth[0, :])
+plt.plot(X_Ground_Truth[0, :], Y_Ground_Truth[0, :], label="Ground Truth")
 plt.legend(["State", "Ground Truth"])
 plt.grid()
 plt.axis("equal")

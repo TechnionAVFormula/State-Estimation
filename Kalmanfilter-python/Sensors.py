@@ -47,18 +47,18 @@ def SteeringTranslate():
 
 plt.figure(1)
 GPSpose = GPSTranslate()
-plt.plot(GPSpose[range(1, 1000), 0], GPSpose[range(1, 1000), 1])
+plt.plot(GPSpose[:, 0], GPSpose[:, 1])
 plt.grid()
 plt.axis("equal")
 
 plt.figure(2)
-Steering_angle = SteeringTranslate()
+# Steering_angle = SteeringTranslate()
 # range(0, len(Steering_angle), 300)
 # range(0, len(Steering_angle), 300)
-print(range(1000))
-plt.plot(
-    Steering_angle[range(1000), 0], Steering_angle[range(1000), 1] / math.pi * 180,
-)
+# print(range(1000))
+# plt.plot(
+#     Steering_angle[range(1000), 0], Steering_angle[range(1000), 1] / math.pi * 180,
+# )
 plt.grid()
 # print(Steering_angle[0:10, :])
 plt.show()
