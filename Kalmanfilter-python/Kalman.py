@@ -42,7 +42,7 @@ def KF_Prediction(X, P, u):
             [1, 0, DTime, 0, -(DTime ** 2) * u[0] * ma.sin(X[4] + Beta)],
             [0, 1, 0, DTime, (DTime ** 2) * u[0] * ma.cos(X[4] + Beta)],
             [0, 0, 1, 0, -DTime * u[0] * ma.sin(X[4] + Beta)],
-            [0, 0, 1, 0, DTime * u[0] * ma.cos(X[4] + Beta)],
+            [0, 0, 0, 1, DTime * u[0] * ma.cos(X[4] + Beta)],
             [0, 0, 0, 0, 1],
         ]
     )

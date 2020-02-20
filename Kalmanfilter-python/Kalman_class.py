@@ -105,8 +105,8 @@ class Kalman:
                 [
                     0,
                     0,
-                    1,
                     0,
+                    1,
                     self.Time_Delta
                     * u[0]
                     * ma.cos(self.State_Correction[4] + self.Slip_angle),
@@ -234,7 +234,7 @@ class Kalman:
         )
         self.Covariance_Update = (
             self.Covariance_Prediction
-            + Kalman_Gain
+            - Kalman_Gain
             @ np.transpose(Jacobian_Measure_Model)
             @ self.Covariance_Prediction
         )
