@@ -26,9 +26,9 @@ def Check_Line():
     i = 1
     for i in range(0, len(Sensors_data)):
         External_sensors[i, :] = [
-            ma.sqrt(
-                ((X[i] - Land_Mark_pos[0]) ** 2) + ((y[i] - Land_Mark_pos[1]) ** 2)
-            ),
+            ma.sqrt(((X[i] - Land_Mark_pos[0]) ** 2) + ((y[i] - Land_Mark_pos[1]) ** 2))
+            + np.random.rand(1) * 0.1
+            - 0.5,
             np.mod(
                 ma.atan2(Land_Mark_pos[1] - y[i], Land_Mark_pos[0] - X[i]), 2 * ma.pi,
             ),
