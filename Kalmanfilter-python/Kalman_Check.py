@@ -6,7 +6,7 @@ Acceleration = 1
 
 
 def Check_Line():
-    Land_Mark_pos = np.array([[25], [-1]])
+    Land_Mark_pos = np.array([[15], [-5]])
     t = np.arange(0, 10, 0.01)
     X = (t ** 2) / 2 * Acceleration
     y = np.zeros([len(X)])

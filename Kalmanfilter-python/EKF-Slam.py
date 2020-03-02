@@ -202,7 +202,6 @@ for i in range(1, len(Sensors_Data)):
     Xx, P = Correction(Sensors_Data[i, :], External_sensors[i, :], Xx, P, Beta)
     X[:, i - 1 : i] = Xx.reshape([7, 1])
     P, Xx, Beta = Prediction(Xx, P, u[:, i])
-
 print("run")
 plt.figure(1)
 plt.plot(X[0, :], X[1, :], label="State")
@@ -218,3 +217,4 @@ plt.legend(["Sensors Data", "State", "Cone"])
 plt.grid()
 plt.axis("equal")
 plt.show()
+
