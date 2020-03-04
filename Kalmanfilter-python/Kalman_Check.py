@@ -6,7 +6,8 @@ Acceleration = 1
 
 
 def Check_Line():
-    Land_Mark_pos = np.array([[15], [-5]])
+    Land_Mark_pos = np.array([[10], [-5]])
+    Land_Mark_pos2 = np.array([[20], [-5]])
     t = np.arange(0, 10, 0.01)
     X = (t ** 2) / 2 * Acceleration
     y = np.zeros([len(X)])
@@ -22,9 +23,9 @@ def Check_Line():
             np.random.rand(1) * 0.1 - 0.05,
             np.random.rand(1) * 0.1 - 0.05,
         ]
-    External_sensors = np.zeros([len(X), 3])
+    External_sensors = np.zeros([len(X), 2])
     i = 1
-    for i in range(0, len(Sensors_data)):
+    for i in range(0, round(len(Sensors_data) / 2)):
         External_sensors[i, :] = [
             ma.sqrt(((X[i] - Land_Mark_pos[0]) ** 2) + ((y[i] - Land_Mark_pos[1]) ** 2))
             + np.random.rand(1) * 0.1
@@ -32,7 +33,17 @@ def Check_Line():
             np.mod(
                 ma.atan2(Land_Mark_pos[1] - y[i], Land_Mark_pos[0] - X[i]), 2 * ma.pi,
             ),
-            1,
+        ]
+    for i in range(round(len(Sensors_data) / 2), len(Sensors_data)):
+        External_sensors[i, :] = [
+            ma.sqrt(
+                ((X[i] - Land_Mark_pos2[0]) ** 2) + ((y[i] - Land_Mark_pos2[1]) ** 2)
+            )
+            + np.random.rand(1) * 0.1
+            - 0.05,
+            np.mod(
+                ma.atan2(Land_Mark_pos2[1] - y[i], Land_Mark_pos2[0] - X[i]), 2 * ma.pi,
+            ),
         ]
     return (Sensors_data, External_sensors, X, y, t, u)
 
