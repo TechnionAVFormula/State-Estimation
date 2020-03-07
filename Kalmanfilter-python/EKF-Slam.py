@@ -11,12 +11,14 @@ DTime = 0.01
 L_Tot = 1.535  # units [m], from Calculations,Weight Transfer file.
 L_Rear = 0.7675  # units [m],assuming the weight is distributed equal on the rear and front wheels need
 X_init = np.zeros([5, 1])
-Alpha = 1
+Alpha = 5
 
 
-P_init = 0.01 * np.eye(len(X_init))
+P_init = 0 * np.zeros(len(X_init))
 W_Model = np.diag((0.01 ** 2, 0.01 ** 2, 0.1 ** 2, 0.1 ** 2, 0.1 ** 2))
-W_Observation = np.diag((0.1 ** 2, 0.1 ** 2,))
+W_Observation = np.diag(
+    (0.01 ** 2, 0.01 ** 2, 0.1 ** 2, 0.1 ** 2, 0.1 ** 2, 0.1 ** 2, 0.1 ** 2)
+)
 V = np.diag([0.5 ** 2, 0.1 ** 2])
 N = 0
 N_Max = 0
@@ -31,8 +33,14 @@ def Extend_State_Covariance(X, P, External_sensors, N):
         )
     )
     X = np.append(X, C, 0)
-    P = np.append(P, 10000 * np.ones((P.shape[0], 2)), 1)
-    P = np.append(P, 10000 * np.ones((2, P.shape[1])), 0)
+    # P = np.append(P, np.zeros((P.shape[0], 2)), 1)
+    # P = np.append(P, np.zeros((2, P.shape[1])), 0)
+    P = np.block(
+        [
+            [P, np.zeros([P.shape[0], 2])],
+            [np.zeros([2, P.shape[0]]), 100000 * np.eye(2)],
+        ]
+    )
     return X, P
 
 
@@ -90,7 +98,6 @@ def Prediction(X, P, u, N):
     ) + np.transpose(F) @ (
         Jacobian_Of_Control @ V @ np.transpose(Jacobian_Of_Control) @ F
     )
-    print(P_Prediction)
     return P_Prediction, X_Prediction, Beta
 
 
@@ -152,14 +159,12 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
         ],
         dtype="float",
     )
-    H_Model = H_Model @ F_Model
-    S = H_Model @ P_Prediction @ np.transpose(H_Model) + W_Model
-    Kalman_Gain_Model = P_Prediction @ np.transpose(H_Model) @ np.linalg.inv(S)
     if N > 0:
-        Pi = 10000000
+        Pi = 1000
         Z_Observation = np.array(
             [[External_sensors[0]], [External_sensors[1]]], dtype="float"
         )
+        Z_Observation = np.append(Z, Z_Observation, 0)
         # Observation = np.array(
         #     [
         #         X_Prediction[0]
@@ -169,7 +174,7 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
         #     ]
         # )
         Observation = X_Prediction[5:]
-        for i in range(0, N):
+        for i in range(0, N, 2):
             delta = np.array(
                 [
                     Observation[i] - X_Prediction[0],
@@ -185,6 +190,7 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
                 ],
                 dtype="float",
             )
+            Approximated_Z = np.append(X_Prediction[:5], Approximated_Z, 0)
             Hi = np.array(
                 [
                     [
@@ -218,7 +224,11 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
                     ],
                 ],
             )
-            Hi = Hi @ F
+            print(F.shape)
+            print(Hi.shape)
+            print(H_Model.shape)
+            Hi = np.append(H_Model, Hi, 0)
+            print(Hi)
             Si = Hi @ P_Prediction @ np.transpose(Hi) + W_Observation
             Ss = np.linalg.inv(Si)
             Pi_Check = (
@@ -226,6 +236,7 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
                 @ Ss
                 @ (Z_Observation - Approximated_Z)
             )
+            print((Z_Observation - Approximated_Z))
             if Pi > Pi_Check:
                 H_Minimal = Hi
                 Si_Minimal = Ss
@@ -235,21 +246,22 @@ def Correction(Sensors_Data, External_sensors, X_Prediction, P_Prediction, Beta,
             Kalman_Gain_Observation = (
                 P_Prediction @ np.transpose(H_Minimal) @ Si_Minimal
             )
-            X = (
-                X_Prediction
-                + Kalman_Gain_Model @ (Z - X_Prediction[:5])
-                + Kalman_Gain_Observation @ (Z_Observation - Z_Liklihood)
-            )
+            X = X_Prediction + Kalman_Gain_Observation @ (Z_Observation - Z_Liklihood)
             P = (
-                np.eye(X.shape[0])
-                - Kalman_Gain_Model @ H_Model
-                - Kalman_Gain_Observation @ H_Minimal
+                np.eye(X.shape[0]) - Kalman_Gain_Observation @ H_Minimal
             ) @ P_Prediction
         else:
+            H_Model = H_Model @ F_Model
+            S = H_Model @ P_Prediction @ np.transpose(H_Model) + W_Model
+            Kalman_Gain_Model = P_Prediction @ np.transpose(H_Model) @ np.linalg.inv(S)
             N = N + 1
             X = X_Prediction + Kalman_Gain_Model @ (Z - X_Prediction[:5])
             P = (np.eye(X.shape[0]) - Kalman_Gain_Model @ H_Model) @ P_Prediction
     else:
+        H_Model = H_Model @ F_Model
+
+        S = H_Model @ P_Prediction @ np.transpose(H_Model) + W_Model
+        Kalman_Gain_Model = P_Prediction @ np.transpose(H_Model) @ np.linalg.inv(S)
         X = X_Prediction + Kalman_Gain_Model @ (Z - X_Prediction)
         P = (np.eye(5) - Kalman_Gain_Model @ H_Model) @ P_Prediction
         N = N + 1
@@ -266,24 +278,21 @@ for i in range(1, len(Sensors_Data)):
         Xx, P = Extend_State_Covariance(Xx, P, External_sensors[i, :], N)
         N_Max = N_Max + 1
     P, Xx, Beta = Prediction(Xx, P, u[:, i], N)
-    plt.plot(X_Ground_Truth[i], Y_Ground_Truth[i], label="Ground Truth")
-    plt.plot(Xx[0], Xx[1], label="State")
-    plt.pause(0.05)
 
+print("run")
+plt.figure(1)
+# plt.plot(X_Ground_Truth[:], Y_Ground_Truth[:], label="Ground Truth")
+plt.plot(X[0, :], X[1, :], label="State")
+plt.legend(["Ground Truth", "State"])
+plt.grid()
+plt.axis("equal")
+plt.figure(2)
+plt.plot(Sensors_Data[:, 0], Sensors_Data[:, 1], "ro", label="Sensors Data")
+plt.plot(X[0, :], X[1, :], label="State")
+plt.plot(X[0, :], X[1, :], label="State")
+plt.plot(X[5, :], X[6, :], "bo", label="Cone")
+plt.legend(["Sensors Data", "State", "Cone"])
+plt.grid()
+plt.axis("equal")
 plt.show()
-
-# print("run")
-# plt.figure(1)
-# plt.plot(X[0, :], X[1, :], label="State")
-
-# plt.legend(["State", "Ground Truth"])
-# plt.grid()
-# plt.axis("equal")
-# plt.figure(2)
-# plt.plot(Sensors_Data[:, 0], Sensors_Data[:, 1], "ro", label="Sensors Data")
-# plt.plot(X[0, :], X[1, :], label="State")
-# plt.plot(X[5, :], X[6, :], "bo", label="Cone")
-# plt.legend(["Sensors Data", "State", "Cone"])
-# plt.grid()
-# plt.axis("equal")
 

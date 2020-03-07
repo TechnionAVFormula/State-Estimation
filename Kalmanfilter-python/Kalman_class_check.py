@@ -21,9 +21,10 @@ for i in range(len(Sensors_Data)):
     K.State_Prediction_function(u[:, i])
 
 plt.figure(1)
-plt.plot(X_Ground_Truth[0, :], Y_Ground_Truth[0, :], label="Ground Truth")
+plt.plot(Sensors_Data[:, 0], Sensors_Data[:, 1], "ro", label="Sensors Data")
 plt.plot(X[0, :], X[1, :], label="State")
-plt.legend(["Ground Truth", "State"])
+plt.plot(X_Ground_Truth[0, :], Y_Ground_Truth[0, :], label="Ground Truth")
+plt.legend(["Ground Truth", "State", "Sensors Data"])
 plt.grid()
 plt.axis("equal")
 plt.grid()
