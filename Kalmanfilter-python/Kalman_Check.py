@@ -61,4 +61,3 @@ def Check_Circle():
             1 / 10 + np.random.rand(1) * 0.01 - 0.005,
         ]
     return (Sensors_data, X, y, t, u)
-

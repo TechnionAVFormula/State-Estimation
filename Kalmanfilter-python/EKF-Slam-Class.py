@@ -4,7 +4,7 @@ from numpy.random import randn
 
 
 class Kalman:
-    def __init__(self,):
+    def __init__(self):
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -12,6 +12,7 @@ class Kalman:
         self.Slip_angle = []
         self.Motion_Noise = []
         self.Measure_Noise = []
+        self.External_Measure_Noise = []
         self.State_Prediction = []
         self.Covariance_Prediction = []
         self.Measure_GPS = []
@@ -20,6 +21,8 @@ class Kalman:
         self.State_Correction = []
         self.State_Update = []
         self.Covariance_Update = []
+        self.Measure_Model = []
+        self.Control_Command = []
 
     @property
     def Measure_GPS(self):
@@ -43,13 +46,14 @@ class Kalman:
         else:
             self.__Measure_Accelerometer = Accelerometer
 
-    def State_Prediction_function(self, u):
+    def State_Prediction_function(self):
         F = np.eye(5)
         if self.Number_of_Cones > 0:
             F = np.append(F, np.zeros((F.shape[0], 2 * self.Number_of_Cones)), 1)
         self.Slip_angle = np.mod(
             ma.atan2(
-                ma.tan(u[1]) * self.Vehicle_Rear_Length, self.Vehicle_Total_Length,
+                ma.tan(self.Control_Command[1]) * self.Vehicle_Rear_Length,
+                self.Vehicle_Total_Length,
             ),
             2 * ma.pi,
         )
@@ -59,7 +63,7 @@ class Kalman:
                     self.State_Correction[2]
                     + self.Time_Delta
                     * ma.cos(self.State_Correction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 )
                 ** 2
             )
@@ -68,13 +72,16 @@ class Kalman:
                     self.State_Correction[3]
                     + self.Time_Delta
                     * ma.sin(self.State_Correction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 )
                 ** 2
             )
         )
         DTheta = (
-            V_tot * ma.cos(self.Slip_angle) * ma.tan(u[1]) / self.Vehicle_Total_Length
+            V_tot
+            * ma.cos(self.Slip_angle)
+            * ma.tan(self.Control_Command[1])
+            / self.Vehicle_Total_Length
         )
         Movement = np.array(
             [
@@ -83,24 +90,24 @@ class Kalman:
                     + (self.Time_Delta ** 2)
                     / 2
                     * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 ],
                 [
                     self.Time_Delta * self.State_Prediction[3]
                     + (self.Time_Delta ** 2)
                     / 2
                     * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 ],
                 [
                     self.Time_Delta
                     * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 ],
                 [
                     self.Time_Delta
                     * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                    * u[0]
+                    * self.Control_Command[0]
                 ],
                 [self.Time_Delta * DTheta],
             ],
@@ -115,7 +122,7 @@ class Kalman:
                     self.Time_Delta,
                     0,
                     -(self.Time_Delta ** 2)
-                    * u[0]
+                    * self.Control_Command[0]
                     * ma.sin(self.State_Correction[4] + self.Slip_angle),
                 ],
                 [
@@ -124,7 +131,7 @@ class Kalman:
                     0,
                     self.Time_Delta,
                     (self.Time_Delta ** 2)
-                    * u[0]
+                    * self.Control_Command[0]
                     * ma.cos(self.State_Correction[4] + self.Slip_angle),
                 ],
                 [
@@ -133,7 +140,7 @@ class Kalman:
                     0,
                     0,
                     -self.Time_Delta
-                    * u[0]
+                    * self.Control_Command[0]
                     * ma.sin(self.State_Correction[4] + self.Slip_angle),
                 ],
                 [
@@ -142,7 +149,7 @@ class Kalman:
                     0,
                     0,
                     self.Time_Delta
-                    * u[0]
+                    * self.Control_Command[0]
                     * ma.cos(self.State_Correction[4] + self.Slip_angle),
                 ],
                 [0, 0, 0, 0, 0],
@@ -179,7 +186,10 @@ class Kalman:
                     self.Time_Delta
                     * np.linalg.norm(self.State_Correction[2:4])
                     * ma.cos(self.Slip_angle)
-                    / (self.Vehicle_Total_Length * (ma.cos(u[1]) ** 2)),
+                    / (
+                        self.Vehicle_Total_Length
+                        * (ma.cos(self.Control_Command[1]) ** 2)
+                    ),
                 ],
             ]
         )
@@ -195,70 +205,191 @@ class Kalman:
             @ F
         )
 
-    def State_Update_function(self, Sensors_Data):
-        self.Measure_Update = np.array(
-            [
-                [Sensors_Data[0]],
-                [Sensors_Data[1]],
+    def State_Update_function(self):
+        V_T = ma.sqrt(
+            (self.State_Prediction[2] ** 2) + (self.State_Prediction[3] ** 2) + 0.01
+        )  # 0.01 to avoid zero division
+        if self.Measure_GPS:
+            self.Measure_Model = np.array(
                 [
-                    self.State_Prediction[2]
-                    + self.Time_Delta
-                    * (
-                        Sensors_Data[2]
-                        * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                        + Sensors_Data[3]
-                        * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                    )
+                    [self.State_Prediction[0]],
+                    [self.State_Prediction[1]],
+                    [
+                        self.Control_Command[0]
+                        * ma.cos(self.State_Prediction[4] + self.Control_Command[1])
+                    ],
+                    [
+                        self.Control_Command[0]
+                        * ma.sin(self.State_Prediction[4] + self.Control_Command[1])
+                    ],
+                    [
+                        V_T
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / self.Vehicle_Total_Length
+                    ],
                 ],
+                dtype="float",
+            )
+            Jacobian_Measure_Model = np.array(
                 [
-                    self.State_Prediction[3]
-                    + self.Time_Delta
-                    * (
-                        Sensors_Data[2]
-                        * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                        - Sensors_Data[3]
-                        * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                    )
+                    [1, 0, 0, 0, 0, 0, 0],
+                    [0, 1, 0, 0, 0, 0, 0],
+                    [
+                        0,
+                        0,
+                        -self.Control_Command[0]
+                        * ma.sin(self.State_Prediction[4] + self.Control_Command[1]),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ],
+                    [
+                        0,
+                        0,
+                        self.Control_Command[0]
+                        * ma.cos(self.State_Prediction[4] + self.Control_Command[1]),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ],
+                    [
+                        0,
+                        0,
+                        self.State_Prediction[3]
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / (V_T * self.Vehicle_Total_Length),
+                        self.State_Prediction[4]
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / (V_T * self.Vehicle_Total_Length),
+                        0,
+                        0,
+                        0,
+                    ],
                 ],
-                [self.State_Prediction[4] + self.Time_Delta * Sensors_Data[4]],
-            ],
-            dtype="float",
-        )
-        Jacobian_Measure_Model = np.array(
-            [
-                [1, 0, 0, 0, 0],
-                [0, 1, 0, 0, 0],
+                dtype="float",
+            )
+        else:
+            self.Measure_Model = np.array(
                 [
-                    0,
-                    0,
-                    1,
-                    0,
-                    -self.Time_Delta
-                    * (
-                        Sensors_Data[2]
-                        * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                        - Sensors_Data[3]
-                        * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                    ),
+                    [
+                        self.Control_Command[0]
+                        * ma.cos(self.State_Prediction[4] + self.Control_Command[1])
+                    ],
+                    [
+                        self.Control_Command[0]
+                        * ma.sin(self.State_Prediction[4] + self.Control_Command[1])
+                    ],
+                    [
+                        V_T
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / self.Vehicle_Total_Length
+                    ],
                 ],
+                dtype="float",
+            )
+            Jacobian_Measure_Model = np.array(
                 [
-                    0,
-                    0,
-                    0,
-                    1,
-                    self.Time_Delta
-                    * (
-                        Sensors_Data[2]
-                        * ma.cos(self.State_Prediction[4] + self.Slip_angle)
-                        + Sensors_Data[3]
-                        * ma.sin(self.State_Prediction[4] + self.Slip_angle)
-                    ),
+                    [
+                        0,
+                        0,
+                        -self.Control_Command[0]
+                        * ma.sin(self.State_Prediction[4] + self.Control_Command[1]),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ],
+                    [
+                        0,
+                        0,
+                        self.Control_Command[0]
+                        * ma.cos(self.State_Prediction[4] + self.Control_Command[1]),
+                        0,
+                        0,
+                        0,
+                        0,
+                    ],
+                    [
+                        0,
+                        0,
+                        self.State_Prediction[3]
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / (V_T * self.Vehicle_Total_Length),
+                        self.State_Prediction[4]
+                        * ma.cos(self.Slip_angle)
+                        * ma.tan(self.Control_Command[1])
+                        / (V_T * self.Vehicle_Total_Length),
+                        0,
+                        0,
+                        0,
+                    ],
                 ],
-                [0, 0, 0, 0, 1],
-            ],
-            dtype="float",
-        )
+                dtype="float",
+            )
+            if self.Number_of_Cones:
+                F = np.block([np.eye(7), np.zeros([7, self.Number_of_Cones - 1])])
+            else:
+                F = np.block([[np.eye(5)], [np.zeros([2, 5])]])
+            Jacobian_Measure_Model = Jacobian_Measure_Model @ F
+            S_Inv_Model = np.linalg.inv(
+                Jacobian_Measure_Model
+                @ self.Covariance_Prediction
+                @ np.transpose(Jacobian_Measure_Model)
+                + self.Measure_Noise
+            )
+            Model_Gain = (
+                self.Covariance_Prediction
+                @ np.transpose(Jacobian_Measure_Model)
+                @ S_Inv_Model
+            )
+            ###
+            # need to switch Measure_Noise  between two states
 
+        for Measure_Update in self.External_Measure_Update:
+            Observation = np.array(
+                [
+                    [
+                        self.State_Prediction[0]
+                        + Measure_Update[0]
+                        * ma.cos(
+                            Measure_Update[1]
+                            + self.State_Prediction[4]
+                            + self.Slip_angle
+                        )
+                    ],
+                    [
+                        self.State_Prediction[1]
+                        + Measure_Update[0]
+                        * ma.sin(
+                            Measure_Update[1]
+                            + self.State_Prediction[4]
+                            + self.Slip_angle
+                        )
+                    ],
+                ]
+            )
+            for K in range(1, self.Number_of_Cones, 2):
+                Delta = np.array(
+                    [
+                        [self.State_Prediction[4 + K] - self.State_Prediction[0]],
+                        [self.State_Prediction[4 + (K + 1)] - self.State_Prediction[1]],
+                    ]
+                )
+                q = np.transpose(Delta) @ Delta
+                Estimate_Measure = np.array(
+                    [
+                        [ma.sqrt(q)],
+                        [ma.atan2(Delta[1], Delta[0]) - self.State_Prediction[4]],
+                    ]
+                )
+                F
         S = (
             Jacobian_Measure_Model
             @ self.Covariance_Prediction
