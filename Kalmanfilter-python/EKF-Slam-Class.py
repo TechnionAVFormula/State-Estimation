@@ -35,12 +35,20 @@ class Kalman:
     def Measure_Accelerometer(self):
         return self.__Measure_Accelerometer
 
+    @property
+    def Number_of_Cones(self):
+        return self.__Number_of_Cones
+
     @Measure_GPS.setter
     def Measure_GPS(self, GPS):
         if self.Measure_GPS == GPS:
             self.__Measure_GPS = []
         else:
             self.__Measure_GPS = GPS
+
+    @Number_of_Cones.setter
+    def Number_of_Cones(self, num):
+        self.__Number_of_Cones = num
 
     @Measure_Accelerometer.setter
     def Measure_Accelerometer(self, Accelerometer):
@@ -353,7 +361,7 @@ class Kalman:
                 )
                 F = np.block(
                     [
-                        [np.eye(5), np.zeros([5, 2 * (self.Number_of_Cones - 1)])],
+                        [np.eye(5), np.zeros([5, 2 * (self.Number_of_Cones)])],
                         [
                             np.zeros([2, 4 + K]),
                             np.eye(2),
@@ -403,7 +411,23 @@ class Kalman:
                     Measure_Update - Estimate_Measure
                 )
             else:
-                pass
-            ###adding new cones###
-            #####################
+                self.State_Correction = np.concatenate(
+                    [self.State_Correction, np.zeros([2, 1])]
+                )
+                self.Number_of_Cones = self.Number_of_Cones + 1
+                self.State_Correction = np.concatenate(
+                    [self.State_Correction, Observation]
+                )
+                self.Covariance_Update = np.block(
+                    [
+                        [
+                            self.Covariance_Update,
+                            np.zeros([self.Covariance_Update.shape[0], 2]),
+                        ],
+                        [
+                            np.zeros([2, self.Covariance_Update.shape[1]]),
+                            10000 * np.eye(2),
+                        ],
+                    ]
+                )
 
