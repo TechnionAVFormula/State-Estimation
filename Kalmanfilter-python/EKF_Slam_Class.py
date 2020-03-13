@@ -6,7 +6,7 @@ from numpy.linalg import inv
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 100
+        self.Alpha = 0.1
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -194,7 +194,8 @@ class Kalman:
                     * ma.cos(self.State_Correction[4] + self.Slip_angle),
                 ],
                 [0, 0, 0, 0, 0],
-            ]
+            ],
+            dtype="float",
         )
         Jacobian_State = (
             np.eye(self.State_Correction.shape[0])
@@ -232,9 +233,9 @@ class Kalman:
                         * (ma.cos(self.Control_Command[1]) ** 2)
                     ),
                 ],
-            ]
+            ],
+            dtype="float",
         )
-        print((Jacobian_State @ self.Covariance_Update @ np.transpose(Jacobian_State)))
         self.Covariance_Prediction = (
             (Jacobian_State @ self.Covariance_Update @ np.transpose(Jacobian_State))
             + np.transpose(F)
@@ -346,13 +347,17 @@ class Kalman:
         self.State_Correction = Model_Gain_Acc @ (
             self.Measure_Accelerometer - self.Measure_Accelerometer_Model
         )
+        Covariance_Minimal = Model_Gain_Acc @ Jacobian_Measure_Accelerometer_Model
         if self.Measure_GPS.shape[0] > 0:
             self.State_Correction = self.State_Correction + Model_Gain_GPS @ (
                 self.Measure_GPS - self.Measure_GPS_Model
             )
+            Covariance_Minimal = (
+                Covariance_Minimal + Model_Gain_GPS @ Jacobian_Measure_Gps_Model
+            )
         if self.Number_of_Cones > 0:
-            for i in range(0, len(self.External_Measure_Update)):
-                Measure_Update = self.External_Measure_Update[i][:]
+            for Measure_Update in self.External_Measure_Update:
+                Measure_Update = np.reshape(Measure_Update, [2, 1])
                 Observation = np.array(
                     [
                         self.State_Prediction[0]
@@ -385,7 +390,8 @@ class Kalman:
                         [
                             [ma.sqrt(q)],
                             [ma.atan2(Delta[1], Delta[0]) - self.State_Prediction[4]],
-                        ]
+                        ],
+                        dtype="float",
                     )
                     F = np.block(
                         [
@@ -395,7 +401,7 @@ class Kalman:
                                 np.eye(2),
                                 np.zeros([2, 2 * self.Number_of_Cones - K - 1]),
                             ],
-                        ]
+                        ],
                     )
                     External_Jacobian = (
                         np.array(
@@ -424,20 +430,23 @@ class Kalman:
                     )
                     S_External = inv(S_External)
                     Pi = (
-                        np.transpose(Observation - Estimate_Measure)
+                        np.transpose(Measure_Update - Estimate_Measure)
                         @ S_External
-                        @ (Observation - Estimate_Measure)
+                        @ (Measure_Update - Estimate_Measure)
                     )
+                    print(Pi)
                     if Pi < Pi_Threshold:
                         Minimal_Jacobian = External_Jacobian
                         S_Minimal = S_External
                         Pi_Threshold = Pi
-                        ####Covariance update!!!!!
                 if Pi_Threshold < self.Alpha:
                     Kalman_Gain = (
                         self.Covariance_Prediction
                         @ np.transpose(Minimal_Jacobian)
                         @ S_Minimal
+                    )
+                    Covariance_Minimal = (
+                        Covariance_Minimal + Kalman_Gain @ Minimal_Jacobian
                     )
                     self.State_Correction = (
                         self.State_Correction
@@ -445,11 +454,12 @@ class Kalman:
                         + Kalman_Gain
                         @ (Measure_Update.reshape(2, 1) - Estimate_Measure)
                     )
-                    ####Covariance update!!!!!
-                    ####Covariance update!!!!!
+                    self.Covariance_Update = (
+                        np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
+                    ) @ self.Covariance_Prediction
                 else:
                     self.State_Correction = np.concatenate(
-                        [self.State_Correction, np.zeros([2, 1])]
+                        [self.State_Correction, Observation]
                     )
                     self.Number_of_Cones = self.Number_of_Cones + 1
                     self.Covariance_Update = np.block(
@@ -467,8 +477,6 @@ class Kalman:
         else:
             self.State_Correction = self.State_Prediction + self.State_Correction
             self.Covariance_Update = (
-                np.eye(self.State_Correction.shape[0])
-                - Model_Gain_GPS @ Jacobian_Measure_Gps_Model
-                - Model_Gain_Acc @ Jacobian_Measure_Accelerometer_Model
+                np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
             ) @ self.Covariance_Prediction
 
