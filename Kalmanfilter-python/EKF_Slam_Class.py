@@ -358,6 +358,8 @@ class Kalman:
         if self.Number_of_Cones > 0:
             for Measure_Update in self.External_Measure_Update:
                 Measure_Update = np.reshape(Measure_Update, [2, 1])
+                print(1111)
+                print(Measure_Update)
                 Observation = np.array(
                     [
                         self.State_Prediction[0]
@@ -385,9 +387,10 @@ class Kalman:
                         ]
                     )
                     q = np.transpose(Delta) @ Delta
+                    R = ma.sqrt(q)
                     Estimate_Measure = np.array(
                         [
-                            [ma.sqrt(q)],
+                            [R],
                             [ma.atan2(Delta[1], Delta[0]) - self.State_Prediction[4],],
                         ],
                         dtype="float",
@@ -406,15 +409,15 @@ class Kalman:
                         np.array(
                             [
                                 [
-                                    -ma.sqrt(q) * Delta[0],
-                                    -ma.sqrt(q) * Delta[1],
+                                    -R * Delta[0],
+                                    -R * Delta[1],
                                     0,
                                     0,
                                     0,
-                                    ma.sqrt(q) * Delta[0],
-                                    ma.sqrt(q) * Delta[1],
+                                    R * Delta[0],
+                                    R * Delta[1],
                                 ],
-                                [Delta[1], -Delta[0], 0, 0, -q, -Delta[1], Delta[0]],
+                                [Delta[1], -Delta[0], 0, 0, -1, -Delta[1], Delta[0]],
                             ],
                             dtype="float",
                         )
@@ -428,12 +431,14 @@ class Kalman:
                         + self.External_Measure_Noise
                     )
                     S_External = inv(S_External)
+                    print(S_External)
                     Pi = (
                         np.transpose(Measure_Update - Estimate_Measure)
                         @ S_External
                         @ (Measure_Update - Estimate_Measure)
                     )
                     print(K)
+                    print(Measure_Update - Estimate_Measure)
                     print(Pi)
                     if Pi < Pi_Threshold:
                         Minimal_Jacobian = External_Jacobian
