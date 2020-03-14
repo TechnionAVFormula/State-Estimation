@@ -73,6 +73,6 @@ K.Control_Command = u[:, 8]
 K.State_Prediction_function()
 K.Measure_GPS = np.reshape(Sensors_Data[8, :2], (2, 1))
 K.Measure_Accelerometer = np.reshape(Sensors_Data[8, 2:], (3, 1))
-K.External_Measure_Update = External_Sensors[12:14, :]
+K.External_Measure_Update = External_Sensors[10:12, :]
 K.State_Update_function()
 print(K.State_Correction)

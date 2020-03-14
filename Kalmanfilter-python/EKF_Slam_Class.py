@@ -6,7 +6,7 @@ from numpy.linalg import inv
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 0.001
+        self.Alpha = 1
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -27,6 +27,7 @@ class Kalman:
         self.Measure_GPS_Model = np.array([])
         self.Measure_Accelerometer_Model = np.array([])
         self.Control_Command = np.array([])
+        self.Adding_State = np.array([])
 
     @property
     def Measure_GPS(self):
@@ -46,8 +47,7 @@ class Kalman:
 
     @Number_of_Cones.setter
     def Number_of_Cones(self, num):
-        self.__Number_of_Cones = num
-        if self.__Number_of_Cones == 1:
+        if num == 1:
             Observation = np.array(
                 [
                     self.State_Prediction[0]
@@ -77,16 +77,44 @@ class Kalman:
                     ],
                     [
                         np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        1000000 * np.eye(2),
+                        1000 * np.eye(2),
                     ],
                 ],
             )
+        elif num > 1:
+            self.State_Prediction = np.concatenate(
+                [self.State_Prediction, self.Adding_State],
+            )
+            self.Covariance_Prediction = np.block(
+                [
+                    [
+                        self.Covariance_Prediction,
+                        np.zeros(
+                            [
+                                self.Covariance_Prediction.shape[0],
+                                2 * (num - self.Number_of_Cones),
+                            ]
+                        ),
+                    ],
+                    [
+                        np.zeros(
+                            [
+                                2 * (num - self.Number_of_Cones),
+                                self.Covariance_Prediction.shape[0],
+                            ]
+                        ),
+                        1000 * np.eye(2 * (num - self.Number_of_Cones)),
+                    ],
+                ],
+            )
+        self.__Number_of_Cones = num
 
     @Measure_Accelerometer.setter
     def Measure_Accelerometer(self, Accelerometer):
         self.__Measure_Accelerometer = Accelerometer
 
     def State_Prediction_function(self):
+        print(self.Number_of_Cones)
         F = np.eye(5)
         if self.Number_of_Cones > 0:
             F = np.append(F, np.zeros((F.shape[0], 2 * self.Number_of_Cones)), 1)
@@ -356,10 +384,9 @@ class Kalman:
                 Covariance_Minimal + Model_Gain_GPS @ Jacobian_Measure_Gps_Model
             )
         if self.Number_of_Cones > 0:
+            self.Adding_State = np.array([])
             for Measure_Update in self.External_Measure_Update:
                 Measure_Update = np.reshape(Measure_Update, [2, 1])
-                print(1111)
-                print(Measure_Update)
                 Observation = np.array(
                     [
                         self.State_Prediction[0]
@@ -430,16 +457,13 @@ class Kalman:
                         @ np.transpose(External_Jacobian)
                         + self.External_Measure_Noise
                     )
+                    print(self.Covariance_Prediction)
                     S_External = inv(S_External)
-                    print(S_External)
                     Pi = (
                         np.transpose(Measure_Update - Estimate_Measure)
                         @ S_External
                         @ (Measure_Update - Estimate_Measure)
                     )
-                    print(K)
-                    print(Measure_Update - Estimate_Measure)
-                    print(Pi)
                     if Pi < Pi_Threshold:
                         Minimal_Jacobian = External_Jacobian
                         S_Minimal = S_External
@@ -454,45 +478,17 @@ class Kalman:
                         Covariance_Minimal + Kalman_Gain @ Minimal_Jacobian
                     )
                     self.State_Correction = self.State_Correction + Kalman_Gain @ (
-                        Measure_Update.reshape(2, 1) - Estimate_Measure
+                        Measure_Update - Estimate_Measure
                     )
                 else:
-                    self.State_Prediction = np.concatenate(
-                        [self.State_Prediction, Observation]
-                    )
-                    self.State_Correction = np.concatenate(
-                        [self.State_Correction, np.zeros([2, 1])]
-                    )
-
-                    self.Number_of_Cones = self.Number_of_Cones + 1
-                    self.Covariance_Prediction = np.block(
-                        [
-                            [
-                                self.Covariance_Prediction,
-                                np.zeros([self.Covariance_Prediction.shape[0], 2]),
-                            ],
-                            [
-                                np.zeros([2, self.Covariance_Prediction.shape[1]]),
-                                1000000 * np.eye(2),
-                            ],
-                        ]
-                    )
-                    Covariance_Minimal = np.block(
-                        [
-                            [
-                                Covariance_Minimal,
-                                np.zeros([Covariance_Minimal.shape[0], 2]),
-                            ],
-                            [
-                                np.zeros([2, Covariance_Minimal.shape[1]]),
-                                np.zeros([2, 2]),
-                            ],
-                        ]
-                    )
+                    self.Adding_State = np.concatenate([self.Adding_State, Observation])
             self.State_Correction = self.State_Prediction + self.State_Correction
             self.Covariance_Update = (
                 np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
             ) @ self.Covariance_Prediction
+            self.Number_of_Cones = (
+                self.__Number_of_Cones + int(self.Adding_State.shape[0] / 2)
+            )
         else:
             self.State_Correction = self.State_Prediction + self.State_Correction
             self.Covariance_Update = (
