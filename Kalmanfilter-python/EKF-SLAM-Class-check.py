@@ -26,7 +26,7 @@ K.Measure_Accelerometer = np.reshape(Sensors_Data[1, 2:], (3, 1))
 K.Control_Command = u[:, 1]
 K.State_Prediction_function()
 K.State_Update_function()
-print(K.State_Correction)
+# print(K.State_Correction)
 K.Measure_GPS = np.reshape(Sensors_Data[2, :2], (2, 1))
 K.Measure_Accelerometer = np.reshape(Sensors_Data[2, 2:], (3, 1))
 K.Control_Command = u[:, 2]
@@ -36,23 +36,37 @@ K.Measure_GPS = np.reshape(Sensors_Data[3, :2], (2, 1))
 K.Measure_Accelerometer = np.reshape(Sensors_Data[3, 2:], (3, 1))
 K.Control_Command = u[:, 3]
 K.State_Prediction_function()
-K.External_Measure_Update = External_Sensors[0:2, :]
+K.External_Measure_Update = External_Sensors[2:4, :]
 K.Number_of_Cones = 1
-K.External_Measure_Noise = np.diag([0.5 ** 2, 0.1 ** 2])
+K.External_Measure_Noise = np.diag([3 ** 2, 0.1 ** 2])
 K.State_Update_function()
-print(K.State_Correction)
+# print(K.State_Correction)
 K.Control_Command = u[:, 4]
 K.State_Prediction_function()
-K.Measure_GPS = np.array([])
+K.Measure_GPS = np.reshape(Sensors_Data[4, :2], (2, 1))
 K.Measure_Accelerometer = np.reshape(Sensors_Data[4, 2:], (3, 1))
-K.External_Measure_Update = External_Sensors[2:4, :]
-print(External_Sensors[2:4, :])
+K.External_Measure_Update = np.array([])
+K.State_Update_function()
+# print(K.State_Correction)
+K.Control_Command = u[:, 5]
+K.State_Prediction_function()
+K.Measure_GPS = np.reshape(Sensors_Data[5, :2], (2, 1))
+K.Measure_Accelerometer = np.reshape(Sensors_Data[5, 2:], (3, 1))
+K.External_Measure_Update = np.array([])
+K.State_Update_function()
+# print(K.State_Correction)
+K.Control_Command = u[:, 6]
+K.State_Prediction_function()
+K.Measure_GPS = np.reshape(Sensors_Data[6, :2], (2, 1))
+K.Measure_Accelerometer = np.reshape(Sensors_Data[6, 2:], (3, 1))
+K.External_Measure_Update = np.array([])
 K.State_Update_function()
 print(K.State_Correction)
-# # K.Control_Command = u[:, 5]
-# # K.State_Prediction_function()
-# # K.Measure_GPS = np.reshape(Sensors_Data[5, :2], (2, 1))
-# # K.Measure_Accelerometer = np.reshape(Sensors_Data[5, 2:], (3, 1))
-# # K.External_Measure_Update = External_Sensors[2:3, :]
-# # K.State_Update_function()
-# # print(K.State_Correction)
+K.Control_Command = u[:, 7]
+K.State_Prediction_function()
+K.Measure_GPS = np.reshape(Sensors_Data[7, :2], (2, 1))
+K.Measure_Accelerometer = np.reshape(Sensors_Data[7, 2:], (3, 1))
+K.External_Measure_Update = External_Sensors[8:10, :]
+print(External_Sensors[8:10, :])
+K.State_Update_function()
+print(K.State_Correction)

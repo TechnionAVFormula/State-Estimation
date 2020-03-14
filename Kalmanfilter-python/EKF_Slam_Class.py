@@ -6,7 +6,7 @@ from numpy.linalg import inv
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 0.1
+        self.Alpha = 0.001
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -77,7 +77,7 @@ class Kalman:
                     ],
                     [
                         np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        1000 * np.eye(2),
+                        1000000 * np.eye(2),
                     ],
                 ],
             )
@@ -381,15 +381,14 @@ class Kalman:
                     Delta = np.array(
                         [
                             self.State_Prediction[4 + K] - self.State_Prediction[0],
-                            self.State_Prediction[4 + (K + 1)]
-                            - self.State_Prediction[1],
+                            self.State_Prediction[5 + K] - self.State_Prediction[1],
                         ]
                     )
                     q = np.transpose(Delta) @ Delta
                     Estimate_Measure = np.array(
                         [
                             [ma.sqrt(q)],
-                            [ma.atan2(Delta[1], Delta[0]) - self.State_Prediction[4]],
+                            [ma.atan2(Delta[1], Delta[0]) - self.State_Prediction[4],],
                         ],
                         dtype="float",
                     )
@@ -434,6 +433,7 @@ class Kalman:
                         @ S_External
                         @ (Measure_Update - Estimate_Measure)
                     )
+                    print(K)
                     print(Pi)
                     if Pi < Pi_Threshold:
                         Minimal_Jacobian = External_Jacobian
@@ -448,32 +448,46 @@ class Kalman:
                     Covariance_Minimal = (
                         Covariance_Minimal + Kalman_Gain @ Minimal_Jacobian
                     )
-                    self.State_Correction = (
-                        self.State_Correction
-                        + self.State_Prediction
-                        + Kalman_Gain
-                        @ (Measure_Update.reshape(2, 1) - Estimate_Measure)
+                    self.State_Correction = self.State_Correction + Kalman_Gain @ (
+                        Measure_Update.reshape(2, 1) - Estimate_Measure
                     )
-                    self.Covariance_Update = (
-                        np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
-                    ) @ self.Covariance_Prediction
                 else:
-                    self.State_Correction = np.concatenate(
-                        [self.State_Correction, Observation]
+                    self.State_Prediction = np.concatenate(
+                        [self.State_Prediction, Observation]
                     )
+                    self.State_Correction = np.concatenate(
+                        [self.State_Correction, np.zeros([2, 1])]
+                    )
+
                     self.Number_of_Cones = self.Number_of_Cones + 1
-                    self.Covariance_Update = np.block(
+                    self.Covariance_Prediction = np.block(
                         [
                             [
-                                self.Covariance_Update,
-                                np.zeros([self.Covariance_Update.shape[0], 2]),
+                                self.Covariance_Prediction,
+                                np.zeros([self.Covariance_Prediction.shape[0], 2]),
                             ],
                             [
-                                np.zeros([2, self.Covariance_Update.shape[1]]),
-                                10000 * np.eye(2),
+                                np.zeros([2, self.Covariance_Prediction.shape[1]]),
+                                1000000 * np.eye(2),
                             ],
                         ]
                     )
+                    Covariance_Minimal = np.block(
+                        [
+                            [
+                                Covariance_Minimal,
+                                np.zeros([Covariance_Minimal.shape[0], 2]),
+                            ],
+                            [
+                                np.zeros([2, Covariance_Minimal.shape[1]]),
+                                np.zeros([2, 2]),
+                            ],
+                        ]
+                    )
+            self.State_Correction = self.State_Prediction + self.State_Correction
+            self.Covariance_Update = (
+                np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
+            ) @ self.Covariance_Prediction
         else:
             self.State_Correction = self.State_Prediction + self.State_Correction
             self.Covariance_Update = (
