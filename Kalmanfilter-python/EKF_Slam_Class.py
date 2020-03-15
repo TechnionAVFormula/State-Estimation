@@ -6,7 +6,7 @@ from numpy.linalg import inv
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 100
+        self.Alpha = 1
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -78,10 +78,11 @@ class Kalman:
                     ],
                     [
                         np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        np.linalg.norm(Observation) * np.eye(2),
+                        0.1 * np.eye(2),
                     ],
                 ],
             )
+            print(self.Covariance_Prediction)
 
     @Measure_Accelerometer.setter
     def Measure_Accelerometer(self, Accelerometer):
@@ -457,7 +458,6 @@ class Kalman:
                     self.State_Correction = np.concatenate(
                         [self.State_Correction, np.zeros([2, 1])]
                     )
-
                     self.Number_of_Cones = self.Number_of_Cones + 1
                     self.Covariance_Prediction = np.block(
                         [
@@ -467,7 +467,7 @@ class Kalman:
                             ],
                             [
                                 np.zeros([2, self.Covariance_Prediction.shape[1]]),
-                                np.linalg.norm(Measure_Update) * np.eye(2),
+                                (np.linalg.norm(Measure_Update) ** 2) * np.eye(2),
                             ],
                         ]
                     )
