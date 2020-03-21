@@ -12,6 +12,10 @@ def takeDistance(elem):
 	return elem.order
 
 def orderByDis(cones, carPos, carDir):
+
+	print("I'm inside orderByDis::")
+	return
+
 	bluePoints = []
 	yellowPoints = []
 	for cone in cones:

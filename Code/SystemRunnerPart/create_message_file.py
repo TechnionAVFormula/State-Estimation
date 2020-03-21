@@ -1,5 +1,5 @@
-from pyFormulaClient import messages
-from pyFormulaClient.NoNvidiaFormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
+from pyFormulaClientNoNvidia import messages
+from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
 
 import os
 
@@ -21,13 +21,55 @@ def create_cone_message(cone_arr):
     msg.data.Pack(data)
     return msg
 
+def create_gps_message(x,y,z):
+    sensor_data = messages.sensors.GPSSensor()
+    sensor_data.position.x = x
+    sensor_data.position.y = y
+    sensor_data.position.z = z
+    sensor_msg = messages.common.Message()
+    sensor_msg.header.id = 100
+    sensor_msg.data.Pack(sensor_data) 
+    return sensor_msg
+
+def create_IMU_message(v , theta):
+    sensor_data = messages.sensors.IMUSensor()
+    sensor_data.velocity.x = v[0]
+    sensor_data.velocity.y = v[1]
+    sensor_data.velocity.z = v[2]
+    sensor_data.orientation.x = -1
+    sensor_data.orientation.y = -1
+    sensor_data.orientation.z = theta
+    sensor_msg = messages.common.Message()
+    sensor_msg.header.id = 200
+    sensor_msg.data.Pack(sensor_data) 
+    return sensor_msg
+
 create_cone_message._msg_id = 1
 
 def main():
+
+    # Establish the client:
     perception_client = FormulaClient(ClientSource.PERCEPTION, 
         read_from_file=os.devnull, write_to_file='perception.messages')
     perception_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
     
+    
+
+    
+    # GPS:
+    x = 30 
+    y = 13
+    z = -14
+    sensor_msg = create_gps_message(x,y,z)
+    perception_conn.send_message(sensor_msg)
+    
+    # IMU:
+    velocity = ( 13 , 1 , -0.01)
+    orientation = 0.3   #radians
+    IMU_msg = create_IMU_message(velocity , orientation)
+    perception_conn.send_message(IMU_msg)
+
+    # Cones:
     cone_arr = [
         {
             "cone_id": 20,
@@ -42,24 +84,22 @@ def main():
             "y": 20,
             "z": 20,
             "type": messages.perception.Yellow
-        } 
+        }, 
+        {
+            "cone_id": 40,
+            "x": 10,
+            "y": 20,
+            "z": 20,
+            "type": messages.perception.Blue
+        }
     ]
     msg = create_cone_message(cone_arr)
     msg.header.timestamp.CopyFrom(messages.get_proto_system_timestamp())
     perception_conn.send_message(msg)
-    msg = create_cone_message(cone_arr)
-    msg.header.timestamp.CopyFrom(messages.get_proto_system_timestamp())
-    perception_conn.send_message(msg)
-    
-    sensor_data = messages.sensors.GPSSensor()
-    sensor_data.position.x = 10
-    sensor_data.position.y = 10
-    sensor_data.position.z = 10
-    sensor_msg = messages.common.Message()
-    sensor_msg.header.id = 100
-    sensor_msg.data.Pack(sensor_data)
-    perception_conn.send_message(sensor_msg)
 
+
+
+    # Exit:
     exit_data = messages.server.ExitMessage()
     exit_msg = messages.common.Message()
     exit_msg.data.Pack(exit_data)

@@ -1,6 +1,6 @@
-from ModuleClient import ModuleClient
-from pyFormulaClient import FormulaClient, messages  
-from MessageDeque import MessageDeque
+from pyFormulaClientNoNvidia import FormulaClient, messages  
+from pyFormulaClientNoNvidia.ModuleClient import ModuleClient
+from pyFormulaClientNoNvidia.MessageDeque import MessageDeque
 
 class StateEstClient(ModuleClient):
     def __init__(self, read_from_file, write_to_file):

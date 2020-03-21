@@ -1,20 +1,22 @@
-from StateEstClient import StateEstClient
-from pyFormulaClient import messages
+from SystemRunnerPart.StateEstClient import StateEstClient
+from pyFormulaClientNoNvidia import messages
 import time
 import signal
 import sys
 import math
 
+from OrderCones import orderCones
+
 class State:
     def __init__(self):
-        self._client = StateEstClient('modules/perception.messages', 'modules/state.messages')
+        self._client = StateEstClient('perception.messages', 'state.messages')
         self._running_id = 1
         self._distance_to_finish = -1
         self.message_timeout = 0.01
 
     def start(self):
         self._client.connect(1)
-        self._client.set_read_delay(0.05)
+        self._client.set_read_delay(0.1)
         self._client.start()
 
     def stop(self):
@@ -32,7 +34,8 @@ class State:
         for cone in cone_map.cones:
             state_cone = messages.state_est.StateCone()
             state_cone.cone_id = self._running_id
-            self._running_id += 1
+            self._running_id += 1  # just a mock, later we need to indentify cones that already exist in our map.
+            #Here Theta and r are self coordinates. Meaning from the perspective of the car:
             state_cone.r = math.sqrt(math.pow(cone.x ,2) + math.pow( cone.y ,2) )
             state_cone.theta =  math.atan2( cone.y , cone.x)
             state_cone.type =  cone.type
@@ -40,8 +43,20 @@ class State:
                 self._distance_to_finish = state_cone.r
             formula_state.state_cones.append(state_cone)
 
+        # Update distance to finish if we've seen the orange cones:
         formula_state.distance_to_finish = self._distance_to_finish
-        return formula_state
+
+        #Order Cones:
+        orderCones(formula_state.state_cones) 
+
+        #Calculate middle of the road:
+        # formula_state.angle_from_road_center =
+        # formula_state.distance_from_road_center =
+        
+        return formula_state 
+
+
+        
 
     def process_gps_message(self):
         try:
@@ -117,3 +132,7 @@ if __name__ == "__main__":
     for signame in ('SIGINT', 'SIGTERM'):
         signal.signal(getattr(signal, signame), shutdown)
     main()
+
+
+
+  

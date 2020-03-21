@@ -1,5 +1,5 @@
-from pyFormulaClient import messages
-from pyFormulaClient.NoNvidiaFormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
+from pyFormulaClientNoNvidia import messages
+from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
 
 import os
 import sys 
