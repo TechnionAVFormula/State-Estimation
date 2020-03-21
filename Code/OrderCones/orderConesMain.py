@@ -1,6 +1,12 @@
-from .orderByDistance import orderByDis
+from .orderByDistance import OrderByDis
+from Code import StateMain
 
-
-def orderCones(cones):
+def orderCones(cones, carState  ):
     print("I'm inside orderCones()::")
-    orderByDis(cones ,  ,  )
+    
+    orderClass = OrderByDis(cones , carState)
+    bluePoints , yellowPoints = orderClass.orderByDis()
+
+    return bluePoints , yellowPoints
+    
+

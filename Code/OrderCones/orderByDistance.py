@@ -1,43 +1,40 @@
 import math
+from pyFormulaClientNoNvidia import messages
 
 """
 Function takes orders cones by distance to car
 """
 
-YELLOW = 0
-BLUE = 1
-ORANGE = 2
+# Get proper Enum:
+YELLOW = messages.perception.Yellow
+BLUE = messages.perception.Blue
+ORANGE = messages.perception.Orange
 
-def takeDistance(elem):
-	return elem.r
 
-def orderByDis(cones, carPos, carDir):
+class OrderByDis:
 
-	print("I'm inside orderByDis::")
-	return
+	def __init__(self, cones, carState):
+		self.carPos = carPos
+		self.cones = cones
 
-	bluePoints = []
-	yellowPoints = []
-	for cone in cones:
-		if cone.type == BLUE:
-			bluePoints.append(cone)
-		elif cone.type == YELLOW:
-			yellowPoints.append(cone)
+
+	def takeDistance(self, elem):
+		return math.sqrt(math.pow(elem.x-self.carPos.x,2) + math.pow(elem.y-self.carPos.y,2))
+
+	def orderByDis(self):
+		bluePoints = []
+		yellowPoints = []
+		otherPoints = []
+		for cone in self.cones:
+			if cone.type == BLUE:
+				bluePoints.append(cone)
+			elif cone.type == YELLOW:
+				yellowPoints.append(cone)
+			else:
+				otherPoints.append(cone)
+			
+		bluePoints.sort(key=self.takeDistance)
+		yellowPoints.sort(key=self.takeDistance)
 		
-	bluePoints.sort(key=takeDistance)
-	yellowPoints.sort(key=takeDistance)
+		return bluePoints , yellowPoints
 
-	count = 0
-	for point in bluePoints:
-		point.order = count
-		count += 1
-	count = 0
-	for point in yellowPoints:
-		point.order = count
-		count += 1
-		
-	newCones = []
-	newCones.extend(yellowPoints)
-	newCones.extend(bluePoints)
-		
-	return newCones

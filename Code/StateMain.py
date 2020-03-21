@@ -7,12 +7,23 @@ import math
 
 from OrderCones import orderCones
 
+class carState:
+    x = 0
+    y = 1
+    Vx = 2
+    Vy = 3
+    theta = 0.4
+
+
 class State:
     def __init__(self):
         self._client = StateEstClient('perception.messages', 'state.messages')
         self._running_id = 1
         self._distance_to_finish = -1
         self.message_timeout = 0.01
+        #To do:
+        self.carState = carState()
+        self.coneMap = 5
 
     def start(self):
         self._client.connect(1)
@@ -96,8 +107,8 @@ class State:
                         return
             except Exception as e:
                 pass
-                
-            self.process_gps_message()
+            
+        
             self.process_imu_message()
 
             try:
