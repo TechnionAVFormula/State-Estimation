@@ -11,30 +11,35 @@ CAR = 2
 SPEED = 3
 
 class Vector:
-	def __init__(self, x, y, type):
-		self.x = x
-		self.y = y
-		self.type = type
+	x = 0
+	y = 0
+	r = 0
+	type = 0
 
 class NumberdMap:
 	def readMap(self,fileName):
 		toRead=open(fileName, 'r')
 
-		carPos = Vector(int(toRead.readline()),int(toRead.readline()),CAR)
-		carDir = Vector(int(toRead.readline()),int(toRead.readline()),SPEED)
+		pointStr = toRead.readline()
+		a = pointStr.split(" ")
+		carPos = Vector()
+		carPos.x = int(a[0])
+		carPos.y = int(a[1])
+		pointStr = toRead.readline()
+		a = pointStr.split(" ")
+		carDir = Vector()
+		carDir.x = int(a[0])
+		carDir.y = int(a[1])
 
 		cones = []
 		pointStr = toRead.readline()
-		while pointStr != "break\n":
-			a = pointStr.split(" ")
-			newCone = Vector(int(a[0]),int(a[1]), BLUE)
-			cones.append(newCone)
-			pointStr = toRead.readline()
-			
-		pointStr = toRead.readline()
 		while pointStr != '':
 			a = pointStr.split(" ")
-			newCone = Vector(int(a[0]),int(a[1]), YELLOW)
+			newCone = Vector()
+			newCone.r = float(a[0])
+			newCone.x = int(a[1])
+			newCone.y = int(a[2])
+			newCone.type = int(a[3])
 			cones.append(newCone)
 			pointStr = toRead.readline()
 
