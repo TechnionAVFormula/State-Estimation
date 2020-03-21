@@ -4,12 +4,12 @@ import math
 Function takes orders cones by distance to car
 """
 
-BLUE = 0
-YELLOW = 1
-TYPE = 2
+YELLOW = 0
+BLUE = 1
+ORANGE = 2
 
 def takeDistance(elem):
-	return elem.order
+	return elem.r
 
 def orderByDis(cones, carPos, carDir):
 
@@ -23,11 +23,6 @@ def orderByDis(cones, carPos, carDir):
 			bluePoints.append(cone)
 		elif cone.type == YELLOW:
 			yellowPoints.append(cone)
-	
-	for point in bluePoints:
-		point.order = math.sqrt((carPos.x - point.x)**2 + (carPos.y - point.y)**2)
-	for point in yellowPoints:
-		point.order = math.sqrt((carPos.x - point.x)**2 + (carPos.y - point.y)**2)
 		
 	bluePoints.sort(key=takeDistance)
 	yellowPoints.sort(key=takeDistance)

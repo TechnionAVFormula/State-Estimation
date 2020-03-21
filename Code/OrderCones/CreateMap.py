@@ -1,5 +1,6 @@
 from tkinter import *
 import math
+import numpy
 
 """
 Left click to create yellow cones
@@ -47,15 +48,16 @@ class createMap:
 	def close(self):
 		if self.ncar == 2:
 			toWrite=open(self.fileName, 'w')
-			for x in self.carPoint:
-				toWrite.write(str(x) + "\n")
-			for x in self.carDir:
-				toWrite.write(str(x) + "\n")
+			toWrite.write(str(self.carPoint[0]) + " " + str(self.carPoint[1]) + "\n")
+			toWrite.write(str(self.carDir[0]) + " " + str(self.carDir[1]) + "\n")
 			for point in self.bluePoints:
-				toWrite.write(str(point[0]) + " " + str(point[1]) + "\n")
-			toWrite.write("break\n")
+				dis = str(math.sqrt((point[0]-self.carPoint[0])**2 +(point[1]-self.carPoint[1])**2))
+				pos = str(point[0]) + " " + str(point[1])
+				toWrite.write( dis + " " + pos + " 1\n")
 			for point in self.yellowPoints:
-				toWrite.write(str(point[0]) + " " + str(point[1]) + "\n")
+				dis = str(math.sqrt((point[0]-self.carPoint[0])**2 +(point[1]-self.carPoint[1])**2))
+				pos = str(point[0]) + " " + str(point[1])
+				toWrite.write( dis + " " + pos + " 0\n")
 			toWrite.close()
 		
 		self.root.destroy()
