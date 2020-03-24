@@ -1,19 +1,13 @@
-from .SystemRunnerPart.StateEstClient import StateEstClient
+from SystemRunnerPart.StateEstClient import StateEstClient
 from pyFormulaClientNoNvidia import messages
+from cless_def.CarState import CarState
 import time
 import signal
 import sys
 import math
 
-from .OrderCones.orderConesMain import orderCones
+from OrderCones.orderConesMain import orderCones
 
-class CarState:
-    x = 0
-    y = 1
-    Vx = 2
-    Vy = 3
-    theta = 0.4
-    
 
 class State:
     def __init__(self):

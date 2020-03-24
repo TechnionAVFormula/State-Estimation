@@ -1,6 +1,8 @@
 import math
 from pyFormulaClientNoNvidia import messages
-from ..StateMain	import *
+import sys
+sys.path.append("..")
+from cless_def.CarState import CarState
 
 """
 Function takes orders cones by distance to car
