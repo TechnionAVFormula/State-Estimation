@@ -1,5 +1,6 @@
 import math
 from pyFormulaClientNoNvidia import messages
+from ..StateMain	import *
 
 """
 Function takes orders cones by distance to car
@@ -14,12 +15,12 @@ ORANGE = messages.perception.Orange
 class OrderByDis:
 
 	def __init__(self, cones, carState):
-		self.carPos = carPos
+		self.carState = carState
 		self.cones = cones
 
 
 	def takeDistance(self, elem):
-		return math.sqrt(math.pow(elem.x-self.carPos.x,2) + math.pow(elem.y-self.carPos.y,2))
+		return math.sqrt(math.pow(elem.x-self.carState.x,2) + math.pow(elem.y-self.carState.y,2))
 
 	def orderByDis(self):
 		bluePoints = []
