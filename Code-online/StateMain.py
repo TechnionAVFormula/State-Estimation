@@ -1,27 +1,34 @@
 from SystemRunnerPart.StateEstClient import StateEstClient
 from pyFormulaClientNoNvidia import messages
-from cless_def.CarState import CarState
+
+# our class_defs and functions:
+from class_defs.StateEst_CarState import CarState
+from class_defs.OrderedConesClass import OrderedCones
+from OrderCones.orderConesMain import orderCones
+
+#typical python stuff:
 import time
 import signal
 import sys
-import math
+import numpy as np
 
-from OrderCones.orderConesMain import orderCones
+
 
 
 class State:
     def __init__(self):
-        #client stuff:
+        #DEBUG:
+        self.is_debug_mode = True
+        #client:
         self._client = StateEstClient('perception.messages', 'state.messages')
-        self.message_timeout = 0.01
+        self._message_timeout = 0.01
         #EKF:
         self._car_state = CarState()
         #cone map:
-        self._cone_map = []
-        self._running_id = 1
-        self._distance_to_finish = -1                
-        #msc:
-        self._msg2control = messages.state_est.FormulaState()
+        self._cone_map =  np.array([]  ,dtype=messages.state_est.StateCone)
+        self._ordered_cones = OrderedCones()
+        self._running_id = 1             
+        
 
 
     def start(self):
@@ -84,38 +91,77 @@ class State:
             if self.check_exist_cone(state_cone):
                 self.add_new_cone(state_cone)   
         #Order Cones:
-        self._msg2control.left_bound_cones , self._msg2control.right_bound_cones  = orderCones( self._cone_map , self._car_state ) 
+        self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
+
+
+    def process_gps_message(self , gps_data):
+        self._car_state.x = gps_data.position.x         
+        self._car_state.y = gps_data.position.y
 
 
 
-        
-
-    def process_gps_message(self):
-        try:
-            gps_data = messages.sensors.GPSSensor()
-            gps_msg.data.Unpack(gps_data)
-            print(f"got gps: x: {gps_data.position.x} y: {gps_data.position.y} z: {gps_data.position.z}")
-        except:
-            pass
-
-    def process_imu_message(self):
-        try:
-            imu_data = messages.sensors.IMUSensor()
-            imu_msg.data.Unpack(imu_data)
-        except:
-            pass
+    def process_imu_message(self , imu_data):
+        pass
 
     def process_server_message(self, server_messages):
         if server_messages.data.Is(messages.server.ExitMessage.DESCRIPTOR):
             return True
 
         return False
+    
+    def calc_distance_to_finish(self):
+        if self._ordered_cones.orange_cones.size == 0 : #not seen any orange cones yet
+            dist = -1
+            is_found = False
+        else:
+            dist = self._ordered_cones.orange_cones[0]  #take closest orange cone
+            is_found = True
+        return dist , is_found    
 
-    def send_message2control(self, msg_id, formula_state):
-        msg = messages.common.Message()
-        msg.header.id = msg_id
-        msg.data.Pack(formula_state)
-        self._client.send_message(msg)
+    
+    def formula_state_msg(self):
+        # Makes a data object according to the formula msg proto "FormulaState"
+        # With the updated state         
+        
+        #create an empty message:
+        data = messages.state_est.FormulaState()
+        
+        # Car's position:
+        data.current_state.position.x = self._car_state.x 
+        data.current_state.position.y = self._car_state.y 
+        data.current_state.velocity.x = self._car_state.Vx
+        data.current_state.velocity.x = self._car_state.Vy
+        data.current_state.theta_absolute = self._car_state.theta
+        
+        # finish estimation:
+        data.distance_to_finish , is_found = self.calc_distance_to_finish()
+        if ( is_found ) and ( data.distance_to_finish < 0 ):
+            data.is_finished = True
+        else:
+            data.is_finished = False
+
+        # Cones:    
+        for cone in self._ordered_cones.yellow_cones:
+            data.right_bound_cones.append(cone)    
+        for cone in self._ordered_cones.blue_cones:
+            data.left_bound_cones.append(cone)
+        # data.right_bound_cones = self._ordered_cones.yellow_cones
+        # data.left_bound_cones  = self._ordered_cones.blue_cones
+ 
+        return data
+    
+
+
+    def send_message2control(self, msg_in):
+        msg_id = msg_in.header.id
+        msg_out = messages.common.Message()
+        msg_out.header.id = msg_id
+
+        # Make the message:
+        data = self.formula_state_msg()
+
+        msg_out.data.Pack(data)
+        self._client.send_message(msg_out)
 
     def run(self):
         while True:
@@ -131,32 +177,38 @@ class State:
             
             ## GPS:
             try:
-                gps_msg = self._client.get_gps_message(timeout=self.message_timeout)
-                formula_state = self.process_gps_message(gps_msg)                
-                self.send_message2control(cone_msg.header.id, formula_state) 
+                gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
+                gps_data = messages.sensors.GPSSensor()
+                gps_msg.data.Unpack(gps_data)
+                if self.is_debug_mode :
+                    print(f"got gps: x: {gps_data.position.x} y: {gps_data.position.y} z: {gps_data.position.z}")
+                self.process_gps_message(gps_data)                
+                self.send_message2control(gps_msg) 
             except Exception as e:
                 pass
     
             ## IMU:
             try:
-                imu_msg = self._client.get_imu_message(timeout=self.message_timeout)
+                imu_msg = self._client.get_imu_message(timeout=self._message_timeout)
                 formula_state = self.process_imu_message(gps_msg)
-                self.send_message2control(cone_msg.header.id, formula_state) 
+                imu_data = messages.sensors.IMUSensor()
+                imu_msg.data.Unpack(imu_data)
+                self.process_imu_message(imu_data)
+                self.send_message2control(cone_msg) 
             except Exception as e:
                 pass
 
             ## Perception:
             try:
-                cone_msg = self._client.get_cone_message(timeout=self.message_timeout)                   
+                cone_msg = self._client.get_cone_message(timeout=self._message_timeout)                   
                 cone_map = messages.perception.ConeMap()
                 cone_msg.data.Unpack(cone_map)  
-
-                print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
-                formula_state = self.process_cones_message(cone_map)
-                self.send_message2control(cone_msg.header.id, formula_state) 
+                if self.is_debug_mode:
+                    print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
+                self.process_cones_message(cone_map)
+                self.send_message2control(cone_msg) 
             except Exception as e:
                 pass
-            
             
             
     #end run(self)
