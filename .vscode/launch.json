@@ -9,9 +9,25 @@
             "type": "python",
             "request": "launch",
             "program": "${file}",
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "Python: parse state message",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/Code_Offline/SystemRunnerDebugger/messages_parser.py",
+            "args": ["${workspaceFolder}/Code_RealTime/Messages/state.messages"],
             "console": "integratedTerminal",
             "cwd": "${fileDirname}",
             "justMyCode": false
+        },
+        {
+            "name": "Python: StateMain",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/Code_RealTime/StateMain.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}/Code_RealTime"
         }
     ]
 }

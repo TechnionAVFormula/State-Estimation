@@ -4,6 +4,8 @@ from pyFormulaClientNoNvidia import messages
 # for showing messages:
 from pprint import pprint 
 import google.protobuf.json_format as proto_format
+# from SystemRunnerPart.print_messages_file import print_messages_file 
+import json
 
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
@@ -26,7 +28,7 @@ class State:
         #DEBUG:
         self.is_debug_mode = True
         #client:
-        self._client = StateEstClient('perception.messages', 'state.messages')
+        self._client = StateEstClient('Messages/perception.messages', 'Messages/state.messages')
         self._message_timeout = 0.01
         #EKF:
         self._car_state = CarState()
@@ -269,7 +271,7 @@ def print_proto_message(data):
     #print message
     msg_dict=proto_format.MessageToDict(data,   including_default_value_fields=True,
                                         preserving_proto_field_name=True)
-    pprint(msg_dict)
+    print(json.dumps(msg_dict,indent=2) ) 
 
 
 def main():
