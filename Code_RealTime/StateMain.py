@@ -121,7 +121,7 @@ class State:
                 self.add_new_cone(state_cone)   
         #Order Cones:
         self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
-
+		#ariela:now the cones are ordered
 
     def process_gps_message(self , gps_data):
         self._car_state.x = gps_data.position.x         
