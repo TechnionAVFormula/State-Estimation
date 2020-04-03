@@ -10,7 +10,7 @@ import json
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
 from class_defs.OrderedConesClass import OrderedCones
-from OrderCones.orderConesMain import orderCones
+from OrderCones.orderConesMain    import orderCones
 from class_defs.Cone import Cone
 
 #typical python stuff:
@@ -21,14 +21,12 @@ import sys
 import numpy as np
 
 
-
-
 class State:
     def __init__(self):
         #DEBUG:
         self.is_debug_mode = True
         #client:
-        self._client = StateEstClient('Messages/perception.messages', 'Messages/state.messages')
+        self._client = StateEstClient('Messages/input_test.messages', 'Messages/state.messages')
         self._message_timeout = 0.01
         #EKF:
         self._car_state = CarState()
@@ -166,7 +164,7 @@ class State:
         data.current_state.position.x = self._car_state.x 
         data.current_state.position.y = self._car_state.y 
         data.current_state.velocity.x = self._car_state.Vx
-        data.current_state.velocity.x = self._car_state.Vy
+        data.current_state.velocity.y = self._car_state.Vy
         data.current_state.theta_absolute = self._car_state.theta
         
         # finish estimation:
