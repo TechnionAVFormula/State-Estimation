@@ -54,45 +54,46 @@ def main():
     perception_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
     
     
+    #================================================================================================#
+    #VVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV#
+    
 
     
     # GPS:
-    x = 30 
-    y = 13
-    z = -14
+    x = 0 
+    y = 0
+    z = 0
     sensor_msg = create_gps_message(x,y,z)
     perception_conn.send_message(sensor_msg)
     
     # IMU:
-    velocity = ( 13 , 1 , -0.01)
-    orientation = 0.3   #radians
+    velocity = ( 0.2 , 1 , -0.01)
+    orientation = 0.1   #radians
     IMU_msg = create_IMU_message(velocity , orientation)
     perception_conn.send_message(IMU_msg)
 
 
-    
-
     # Cones:
     cone_arr = [
         {
-            "cone_id": 20,
+            "cone_id": 1,
             "x": 10,
-            "y": 10,
-            "z": 10,
+            "y":-10,
+            "z": 2,
             "type": messages.perception.Blue
         },
         {
-            "cone_id": 30,
-            "x": 20,
-            "y": 20,
-            "z": 20,
+            "cone_id": 2,
+            "x": 10,
+            "y": 10,
+            "z": 1,
             "type": messages.perception.Yellow
         }, 
         {
-            "cone_id": 40,
-            "x": 10,
-            "y": 20,
-            "z": 20,
+            "cone_id": 3,
+            "x": 20,
+            "y":-10,
+            "z": 2,
             "type": messages.perception.Blue
         }
     ]
@@ -101,6 +102,63 @@ def main():
     perception_conn.send_message(msg)
 
 
+    # GPS:
+    x = 9.5  #almost 10 meters towards the east 
+    y = 0
+    z = 0
+    sensor_msg = create_gps_message(x,y,z)
+    perception_conn.send_message(sensor_msg)
+    
+    # IMU:
+    velocity = ( 0.5 , 1 , -0.01)
+    orientation = -0.1   #radians
+    IMU_msg = create_IMU_message(velocity , orientation)
+    perception_conn.send_message(IMU_msg)
+
+
+
+    # Cones:
+    cone_arr = [
+        {
+            "cone_id": 1,
+            "x": 0,
+            "y":-10,
+            "z": 2,
+            "type": messages.perception.Blue
+        },
+        {
+            "cone_id": 2,
+            "x": 0,
+            "y": 10,
+            "z": 1,
+            "type": messages.perception.Yellow
+        }, 
+        {
+            "cone_id": 3,
+            "x": 10,
+            "y":-10,
+            "z": 2,
+            "type": messages.perception.Blue
+        },
+
+        #new cone:
+        {
+            "cone_id": 4,
+            "x": 10,
+            "y": 10,
+            "z": 2.3,
+            "type": messages.perception.Yellow
+        }
+
+    ]
+    msg = create_cone_message(cone_arr)
+    msg.header.timestamp.CopyFrom(messages.get_proto_system_timestamp())
+    perception_conn.send_message(msg)
+
+
+
+    #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
+    #================================================================================================#
 
     # Exit:
     exit_data = messages.server.ExitMessage()

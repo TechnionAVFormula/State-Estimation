@@ -137,7 +137,7 @@ class State:
         self._car_state.theta = imu_data.orientation.z
 
         if self.is_debug_mode:
-            pass
+            print_proto_message(imu_data)
 
     def process_server_message(self, server_messages):
         if server_messages.data.Is(messages.server.ExitMessage.DESCRIPTOR):
