@@ -10,6 +10,7 @@ class ConeMap():
         self.filter_freq = 100
         self.real_cone_threshold = 50
 
+        # dynamic propertise:
         self._cone_map = np.array( []   ,   dtype=Cone)
         self._call_counter = 0
 

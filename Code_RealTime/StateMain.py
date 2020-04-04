@@ -1,5 +1,23 @@
 from SystemRunnerPart.StateEstClient import StateEstClient
-from pyFormulaClientNoNvidia import messages
+
+# our class_defs and functions:
+from class_defs.StateEst_CarState import CarState
+from class_defs.OrderedConesClass import OrderedCones
+from OrderCones.orderConesMain    import orderCones
+from class_defs.Cone import Cone
+
+## import depanding on running state / configuration state:
+from config import CONFIG
+from config import ConfigEnum
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+
+
 
 # for showing messages:
 from pprint import pprint 
@@ -7,11 +25,7 @@ import google.protobuf.json_format as proto_format
 # from SystemRunnerPart.print_messages_file import print_messages_file 
 import json
 
-# our class_defs and functions:
-from class_defs.StateEst_CarState import CarState
-from class_defs.OrderedConesClass import OrderedCones
-from OrderCones.orderConesMain    import orderCones
-from class_defs.Cone import Cone
+
 
 #typical python stuff:
 import math
@@ -233,7 +247,7 @@ class State:
                 imu_data = messages.sensors.IMUSensor()
                 imu_msg.data.Unpack(imu_data)
                 self.process_imu_message(imu_data)
-                self.send_message2control(cone_msg) 
+                self.send_message2control(imu_msg) 
             except Exception as e:
                 pass
 
