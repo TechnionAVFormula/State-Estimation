@@ -1,4 +1,9 @@
-from pyFormulaClientNoNvidia import messages
+from config import CONFIG, ConfigEnum
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
 
 class Cone:
     cone_id = 1

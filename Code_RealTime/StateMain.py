@@ -40,7 +40,7 @@ class State:
         #DEBUG:
         self.is_debug_mode = True
         #client:
-        self._client = StateEstClient('Messages/input_test.messages', 'Messages/state.messages')
+        self._client = StateEstClient()
         self._message_timeout = 0.01
         #EKF:
         self._car_state = CarState()

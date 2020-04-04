@@ -1,10 +1,23 @@
-from pyFormulaClientNoNvidia import FormulaClient, messages  
-from pyFormulaClientNoNvidia.ModuleClient import ModuleClient
-from pyFormulaClientNoNvidia.MessageDeque import MessageDeque
+from config import CONFIG, IN_MESSAGE_FILE, OUT_MESSAGE_FILE
+from config import ConfigEnum
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import FormulaClient, messages  
+    from pyFormulaClient.ModuleClient import ModuleClient
+    from pyFormulaClient.MessageDeque import MessageDeque
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import FormulaClient, messages  
+    from pyFormulaClientNoNvidia.ModuleClient import ModuleClient
+    from pyFormulaClientNoNvidia.MessageDeque import MessageDeque
+else:
+    raise NameError('User Should Choose Configuration from config.py')
 
 class StateEstClient(ModuleClient):
     def __init__(self, read_from_file, write_to_file):
-        super().__init__(FormulaClient.ClientSource.STATE_EST, read_from_file, write_to_file)    
+        if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+            super().__init__(FormulaClient.ClientSource.STATE_EST)       
+        elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+            super().__init__(FormulaClient.ClientSource.STATE_EST, IN_MESSAGE_FILE, OUT_MESSAGE_FILE)
         self.server_messages = MessageDeque()                                              
         self.cones_map_messages = MessageDeque(maxlen=1)        
         self.gps_messages = MessageDeque(maxlen=1)        
