@@ -53,7 +53,8 @@ class State:
 
     def start(self):
         self._client.connect(1)
-        self._client.set_read_delay(0.1)
+        if CONFIG == ConfigEnum.LOCAL_TEST:
+            self._client.set_read_delay(0.1)
         self._client.start()
 
     def stop(self):
