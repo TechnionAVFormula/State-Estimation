@@ -6,7 +6,7 @@ from numpy.linalg import inv
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 1
+        self.Alpha = 10000
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -78,7 +78,7 @@ class Kalman:
                     ],
                     [
                         np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        0.1 * np.eye(2),
+                        0.5 * np.eye(2),
                     ],
                 ],
             )
@@ -92,32 +92,12 @@ class Kalman:
         F = np.eye(5)
         if self.Number_of_Cones > 0:
             F = np.append(F, np.zeros((F.shape[0], 2 * self.Number_of_Cones)), 1)
-        self.Slip_angle = np.mod(
-            ma.atan2(
-                ma.tan(self.Control_Command[1]) * self.Vehicle_Rear_Length,
-                self.Vehicle_Total_Length,
-            ),
-            2 * ma.pi,
+        self.Slip_angle = ma.atan2(
+            ma.tan(self.Control_Command[1]) * self.Vehicle_Rear_Length,
+            self.Vehicle_Total_Length,
         )
         V_tot = ma.sqrt(
-            (
-                (
-                    self.State_Correction[2]
-                    + self.Time_Delta
-                    * ma.cos(self.State_Correction[4] + self.Slip_angle)
-                    * self.Control_Command[0]
-                )
-                ** 2
-            )
-            + (
-                (
-                    self.State_Correction[3]
-                    + self.Time_Delta
-                    * ma.sin(self.State_Correction[4] + self.Slip_angle)
-                    * self.Control_Command[0]
-                )
-                ** 2
-            )
+            ((self.State_Correction[2]) ** 2) + ((self.State_Correction[3]) ** 2)
         )
         DTheta = (
             V_tot
@@ -252,7 +232,7 @@ class Kalman:
     def State_Update_function(self):
         V_T = ma.sqrt(
             (self.State_Prediction[2] ** 2) + (self.State_Prediction[3] ** 2) + 0.01
-        )  # 0.01 to avoid zero division
+        )
         self.Measure_GPS_Model = np.array(
             [self.State_Prediction[0], self.State_Prediction[1]]
         )
@@ -283,31 +263,31 @@ class Kalman:
                 [
                     0,
                     0,
+                    0,
+                    0,
                     -self.Control_Command[0]
                     * ma.sin(self.State_Prediction[4] + self.Control_Command[1]),
                     0,
                     0,
-                    0,
-                    0,
                 ],
                 [
+                    0,
+                    0,
                     0,
                     0,
                     self.Control_Command[0]
                     * ma.cos(self.State_Prediction[4] + self.Control_Command[1]),
                     0,
                     0,
-                    0,
-                    0,
                 ],
                 [
                     0,
                     0,
-                    self.State_Prediction[3]
+                    self.State_Prediction[2]
                     * ma.cos(self.Slip_angle)
                     * ma.tan(self.Control_Command[1])
                     / (V_T * self.Vehicle_Total_Length),
-                    self.State_Prediction[4]
+                    self.State_Prediction[3]
                     * ma.cos(self.Slip_angle)
                     * ma.tan(self.Control_Command[1])
                     / (V_T * self.Vehicle_Total_Length),
@@ -330,27 +310,27 @@ class Kalman:
             @ np.transpose(Jacobian_Measure_Accelerometer_Model)
             + self.Measure_Acc_Noise
         )
-        S_Inv_GPS_Model = inv(
-            Jacobian_Measure_Gps_Model
-            @ self.Covariance_Prediction
-            @ np.transpose(Jacobian_Measure_Gps_Model)
-            + self.Measure_GPS_Noise
-        )
         Model_Gain_Acc = (
             self.Covariance_Prediction
             @ np.transpose(Jacobian_Measure_Accelerometer_Model)
             @ S_Inv_Acc_Model
-        )
-        Model_Gain_GPS = (
-            self.Covariance_Prediction
-            @ np.transpose(Jacobian_Measure_Gps_Model)
-            @ S_Inv_GPS_Model
         )
         self.State_Correction = Model_Gain_Acc @ (
             self.Measure_Accelerometer - self.Measure_Accelerometer_Model
         )
         Covariance_Minimal = Model_Gain_Acc @ Jacobian_Measure_Accelerometer_Model
         if self.Measure_GPS.shape[0] > 0:
+            S_Inv_GPS_Model = inv(
+                Jacobian_Measure_Gps_Model
+                @ self.Covariance_Prediction
+                @ np.transpose(Jacobian_Measure_Gps_Model)
+                + self.Measure_GPS_Noise
+            )
+            Model_Gain_GPS = (
+                self.Covariance_Prediction
+                @ np.transpose(Jacobian_Measure_Gps_Model)
+                @ S_Inv_GPS_Model
+            )
             self.State_Correction = self.State_Correction + Model_Gain_GPS @ (
                 self.Measure_GPS - self.Measure_GPS_Model
             )
@@ -492,4 +472,3 @@ class Kalman:
             self.Covariance_Update = (
                 np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
             ) @ self.Covariance_Prediction
-
