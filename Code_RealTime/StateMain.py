@@ -38,7 +38,7 @@ import numpy as np
 class State:
     def __init__(self):
         #DEBUG:
-        self.is_debug_mode = True
+        self.is_debug_mode = False
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01

@@ -1,8 +1,16 @@
 import math
-from pyFormulaClientNoNvidia import messages
-import sys
-# sys.path.append("..")
-# from class_defs.StateEst_CarState import CarState
+
+## import depanding on running state / configuration state:
+from config import CONFIG , ConfigEnum
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+
+
 
 """
 Function takes orders cones by distance to car
