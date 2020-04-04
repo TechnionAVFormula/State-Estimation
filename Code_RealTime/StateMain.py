@@ -7,8 +7,7 @@ from OrderCones.orderConesMain    import orderCones
 from class_defs.Cone import Cone
 
 ## import depanding on running state / configuration state:
-from config import CONFIG
-from config import ConfigEnum
+from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
 
 if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
@@ -38,7 +37,7 @@ import numpy as np
 class State:
     def __init__(self):
         #DEBUG:
-        self.is_debug_mode = False
+        self.is_debug_mode = IS_DEBUG_MODE
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
