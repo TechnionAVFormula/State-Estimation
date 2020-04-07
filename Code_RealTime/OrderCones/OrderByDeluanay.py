@@ -20,8 +20,7 @@ ORANGE = messages.perception.Orange
 
 '''
 orderByDeluanay takes:
-CarCG- car position [x,y]
-CarCG- car direction [x,y]
+CarState - contains x,y,Vx,Vy
 Cones- array of cones in some format
 
 orderByDeluanay returns:
@@ -30,14 +29,12 @@ returnYellow - array of ordered yellow cones in same format as input
 returnLostBlue - array of blue cones not chosen to be ordered in same format as input
 returnLostYellow - array of yellow cones not chosen to be ordered in same format as input
 '''
-CarCG, CarVel
+
 def orderByDeluanay(Cones, CarState):
-	CarCG = [CarState.x, CarState.y]
-	CarVel = [CarState.Vx, CarState.Vy]
 	coneTemplate = copy.deepcopy(Cones[0])
 	numCones = np.empty([len(Cones), 4])
-	numCar = [CarCG.x,CarCG.y]
-	numVel = [CarVel.x,CarVel.y]
+	numCar = [CarState.x,CarState.y]
+	numVel = [CarState.Vx,CarState.Vy]
 	for i in range(len(Cones)):
 		color = 0
 		if Cones[i].type == YELLOW:
@@ -625,5 +622,3 @@ def RotateVector(n,Theta):
 			   [np.sin(Theta),np.cos(Theta)]]) #Rotation matrix
 	v=np.transpose(np.matmul(Q,np.transpose(n)))
 	return v
-
-print (0)

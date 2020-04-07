@@ -1,4 +1,5 @@
 from .orderByDistance import OrderByDis
+from .OrderByDeluanay import orderByDeluanay
 
 
 
@@ -13,6 +14,7 @@ def orderCones(coneMap, carState  ):
 	'''
 	
 	#to order cones by delaunay
+	bluePoints , yellowPoints, blueLost, yellowLost = orderByDeluanay(coneMap, carState)
 
     return bluePoints , yellowPoints
     
