@@ -1,12 +1,12 @@
 import numpy as np
 import math as ma
 from numpy.random import randn
-from numpy.linalg import inv
+from numpy.linalg import inv, norm
 
 
 class Kalman:
     def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 10000
+        self.Alpha = 100
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
@@ -78,7 +78,7 @@ class Kalman:
                     ],
                     [
                         np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        0.5 * np.eye(2),
+                        0.01 * np.eye(2),
                     ],
                 ],
             )
@@ -96,9 +96,7 @@ class Kalman:
             ma.tan(self.Control_Command[1]) * self.Vehicle_Rear_Length,
             self.Vehicle_Total_Length,
         )
-        V_tot = ma.sqrt(
-            ((self.State_Correction[2]) ** 2) + ((self.State_Correction[3]) ** 2)
-        )
+        V_tot = norm(self.State_Correction[2:4])
         DTheta = (
             V_tot
             * ma.cos(self.Slip_angle)
@@ -207,8 +205,7 @@ class Kalman:
                 ],
                 [
                     0,
-                    self.Time_Delta
-                    * np.linalg.norm(self.State_Correction[2:4])
+                    norm(self.State_Correction[2:4])
                     * ma.cos(self.Slip_angle)
                     / (
                         self.Vehicle_Total_Length
@@ -219,20 +216,14 @@ class Kalman:
             dtype="float",
         )
         self.Covariance_Prediction = (
-            (Jacobian_State @ self.Covariance_Update @ np.transpose(Jacobian_State))
-            + np.transpose(F)
-            @ (
-                Jacobian_Motion_Noise
-                @ self.Motion_Noise
-                @ np.transpose(Jacobian_Motion_Noise)
-            )
+            (Jacobian_State @ self.Covariance_Update @ Jacobian_State.T)
+            + F.T
+            @ (Jacobian_Motion_Noise @ self.Motion_Noise @ Jacobian_Motion_Noise.T)
             @ F
         )
 
     def State_Update_function(self):
-        V_T = ma.sqrt(
-            (self.State_Prediction[2] ** 2) + (self.State_Prediction[3] ** 2) + 0.01
-        )
+        V_T = norm(self.State_Prediction[2:4] + 0.01)
         self.Measure_GPS_Model = np.array(
             [self.State_Prediction[0], self.State_Prediction[1]]
         )
@@ -240,11 +231,11 @@ class Kalman:
             [
                 [
                     self.Control_Command[0]
-                    * ma.cos(self.State_Prediction[4] + self.Control_Command[1])
+                    * ma.cos(self.State_Prediction[4] + self.Slip_angle)
                 ],
                 [
                     self.Control_Command[0]
-                    * ma.sin(self.State_Prediction[4] + self.Control_Command[1])
+                    * ma.sin(self.State_Prediction[4] + self.Slip_angle)
                 ],
                 [
                     V_T
@@ -255,9 +246,6 @@ class Kalman:
             ],
             dtype="float",
         )
-        Jacobian_Measure_Gps_Model = np.array(
-            [[1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0],], dtype="float",
-        )
         Jacobian_Measure_Accelerometer_Model = np.array(
             [
                 [
@@ -266,7 +254,7 @@ class Kalman:
                     0,
                     0,
                     -self.Control_Command[0]
-                    * ma.sin(self.State_Prediction[4] + self.Control_Command[1]),
+                    * ma.sin(self.State_Prediction[4] + self.Slip_angle),
                     0,
                     0,
                 ],
@@ -276,7 +264,7 @@ class Kalman:
                     0,
                     0,
                     self.Control_Command[0]
-                    * ma.cos(self.State_Prediction[4] + self.Control_Command[1]),
+                    * ma.cos(self.State_Prediction[4] + self.Slip_angle),
                     0,
                     0,
                 ],
@@ -302,12 +290,11 @@ class Kalman:
             F = np.block([np.eye(7), np.zeros([7, 2 * (self.Number_of_Cones - 1)])])
         else:
             F = np.block([[np.eye(5)], [np.zeros([2, 5])]])
-        Jacobian_Measure_Gps_Model = Jacobian_Measure_Gps_Model @ F
         Jacobian_Measure_Accelerometer_Model = Jacobian_Measure_Accelerometer_Model @ F
         S_Inv_Acc_Model = inv(
             Jacobian_Measure_Accelerometer_Model
             @ self.Covariance_Prediction
-            @ np.transpose(Jacobian_Measure_Accelerometer_Model)
+            @ Jacobian_Measure_Accelerometer_Model.T
             + self.Measure_Acc_Noise
         )
         Model_Gain_Acc = (
@@ -320,10 +307,14 @@ class Kalman:
         )
         Covariance_Minimal = Model_Gain_Acc @ Jacobian_Measure_Accelerometer_Model
         if self.Measure_GPS.shape[0] > 0:
+            Jacobian_Measure_Gps_Model = np.array(
+                [[1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0],], dtype="float",
+            )
+            Jacobian_Measure_Gps_Model = Jacobian_Measure_Gps_Model @ F
             S_Inv_GPS_Model = inv(
                 Jacobian_Measure_Gps_Model
                 @ self.Covariance_Prediction
-                @ np.transpose(Jacobian_Measure_Gps_Model)
+                @ Jacobian_Measure_Gps_Model.T
                 + self.Measure_GPS_Noise
             )
             Model_Gain_GPS = (
@@ -447,7 +438,7 @@ class Kalman:
                             ],
                             [
                                 np.zeros([2, self.Covariance_Prediction.shape[1]]),
-                                (np.linalg.norm(Measure_Update) ** 2) * np.eye(2),
+                                0.01 * np.eye(2),
                             ],
                         ]
                     )
