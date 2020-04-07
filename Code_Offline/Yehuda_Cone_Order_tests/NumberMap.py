@@ -1,4 +1,5 @@
 from orderByDistance import *
+from OrderByDeluanay import *
 from tkinter import *
 
 """
@@ -15,6 +16,7 @@ class Vector:
 	y = 0
 	r = 0
 	type = 0
+	order = 0
 
 class NumberdMap:
 	def readMap(self,fileName):
@@ -48,10 +50,23 @@ class NumberdMap:
 		
 
 	def __init__(self,fileName):
-		self.carPos, self.carDir, cones = self.readMap(fileName)
-		
+		self.carPos, self.carDir, self.cones = self.readMap(fileName)
+		carState = Vector()
+		carState.x = self.carPos.x
+		carState.y = self.carPos.y
 		#change function here
-		self.cones = orderByDis(cones,self.carPos,self.carDir)
+		'''
+		orderFunc = OrderByDis(self.cones,carState)
+		bluePoints , yellowPoints = orderFunc.orderByDis()
+		
+		'''
+		
+		bluePoints, yellowPoints, LostBlue, LostYellow = orderByDeluanay( self.cones, self.carPos, self.carDir)
+			
+		self.cones = bluePoints
+		self.cones.extend(yellowPoints)
+		self.cones.extend(LostBlue)
+		self.cones.extend(LostYellow)
 			
 	def printMap(self):
 		root = Tk()

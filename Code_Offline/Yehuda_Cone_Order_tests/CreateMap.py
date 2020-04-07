@@ -6,7 +6,7 @@ import numpy
 Left click to create yellow cones
 Right click to create blue cones
 First scroll click creates car
-Second scroll click creates hist direction
+Second scroll click creates his direction
 The map won't be saved if car and direction wern't created
 """
 
@@ -53,11 +53,11 @@ class createMap:
 			for point in self.bluePoints:
 				dis = str(math.sqrt((point[0]-self.carPoint[0])**2 +(point[1]-self.carPoint[1])**2))
 				pos = str(point[0]) + " " + str(point[1])
-				toWrite.write( dis + " " + pos + " 1\n")
+				toWrite.write( dis + " " + pos + " 0\n")
 			for point in self.yellowPoints:
 				dis = str(math.sqrt((point[0]-self.carPoint[0])**2 +(point[1]-self.carPoint[1])**2))
 				pos = str(point[0]) + " " + str(point[1])
-				toWrite.write( dis + " " + pos + " 0\n")
+				toWrite.write( dis + " " + pos + " 1\n")
 			toWrite.close()
 		
 		self.root.destroy()
