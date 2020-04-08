@@ -5,8 +5,9 @@ function setup(block) %runs at t=0 i/o definitions
 block.SetSimViewingDevice(true);
 
 %dialog parameters
-block.NumDialogPrms = 3;
-block.DialogPrmsTunable = {'Nontunable','Nontunable','Nontunable'}; %can change during simulation
+block.NumDialogPrms = 7;
+block.DialogPrmsTunable = {'Nontunable','Nontunable','Nontunable',...
+    'Nontunable','Nontunable','Nontunable','Nontunable'}; %can change during simulation
 %[ControlTs,L]
 
 %register number of ports
@@ -106,6 +107,8 @@ if ~ishghandle(UserData.Fig)
      UserData=SetupFigAndUserData(block); %set figure to a new start
 end
 %General inputs
+RSight=block.DialogPrm(6).Data;
+AlphaSight=block.DialogPrm(7).Data;
 L=block.DialogPrm(2).Data;
 Vmax=block.DialogPrm(3).Data;
 x=block.InputPort(2).Data(1);
@@ -148,22 +151,20 @@ keyspressed=iskeydown([31,33,30,32,23,126,128]); %check keynames
 if any(keyspressed)
     block.OutputPort(1).Data=double(keyspressed);
     block.OutputPort(2).Data=1;
-    
-    %Updated Limfactor according to vehicle velocity
-    if keyspressed(1)||keyspressed(2)
-        TargetAccelerationSign=-keyspressed(1)+keyspressed(2);
-        TargetVelocity=abs(v)+(5/3.6)*TargetAccelerationSign; %5 is what is added on each keypress - see slx
-        UserData.LimFactor=10*(TargetVelocity/Vmax)+2;
-        set(gcbh,'UserData',UserData); %updates the whole of UserData... unfournate
-    end
 else
     block.OutputPort(1).Data=[0,0,0,0,0,0,0];
     block.OutputPort(2).Data=0;
 end
 
 %updated SceneAxes limits
-xlim(UserData.SceneAxes,UserData.LimFactor*L*[-1,1]+x);
-ylim(UserData.SceneAxes,UserData.LimFactor*L*[-1,1]+y);
+UpdatedLimFactor=UserData.LimFactor*(1+(abs(v)/Vmax));
+UserData.SceneAxes.XLim=UpdatedLimFactor*L*[-1,1]+x;
+UserData.SceneAxes.YLim=UpdatedLimFactor*L*[-1,1]+y;
+
+%update sightrange
+thetaSight=linspace(theta-AlphaSight/2,theta+AlphaSight/2,10);
+UserData.hSight.XData=[0,RSight*cos(thetaSight),0]+x;
+UserData.hSight.YData=[0,RSight*sin(thetaSight),0]+y;
 
 %--------Update auxiliary axes
 
@@ -180,7 +181,7 @@ UserData.hOdometerArrow.UData=cos(pi-v/Vmax*pi);
 UserData.hOdometerArrow.VData=sin(pi-v/Vmax*pi);
 UserData.hOdometerTxt.String=sprintf('Velocity %.3g[km/h]',round(v*3.6,2));
 
-drawnow limitrate
+drawnow;
 end
 function Terminate(block)
 UserData=get(gcbh,'UserData');
@@ -206,12 +207,13 @@ if nargin<2 %figure was not provided in input
     set(Fig,'WindowStyle','Modal');
     
     %Create Scene Axes
+    LimFactor=10;
     L=block.DialogPrm(2).Data;
     SceneAxes=axes(...
         'parent',       Fig,...
         'position',     [0.25,0.1,0.9,0.8],... %[Left,Buttom,Height,Width]
-        'XLim',          2*L*[-1,1],...
-        'YLim',          2*L*[-1,1]);
+        'XLim',          LimFactor*L*[-1,1],...
+        'YLim',          LimFactor*L*[-1,1]);
     hold(SceneAxes,'on'); grid(SceneAxes,'on'); axis(SceneAxes,'manual')
     SceneAxes.DataAspectRatio=[1,1,1];
     %Create TimeAxes,SteeringWheelAxes and OdometerAxes
@@ -269,14 +271,27 @@ v=block.InputPort(2).Data(3);
 theta=block.InputPort(2).Data(4);
 delta=block.InputPort(2).Data(5);
 L=block.DialogPrm(2).Data; 
+LeftCones=block.DialogPrm(4).Data;
+RightCones=block.DialogPrm(5).Data;
 
 %-------------Initalize Drawing
-
 %SceneAxes 
+LeftColor=[0,0,1]; %blue
+RightColor=[0.9,0.9,0]; %yellow
+ConeEdgeColor=[0.5,0.5,0];
+Msize=4;
+plot(SceneAxes,LeftCones(:,1),LeftCones(:,2),'color',LeftColor,...
+    'linewidth',1,'marker','o','linestyle','-','markersize',...
+    Msize,'markerfacecolor',LeftColor,'markeredgecolor',ConeEdgeColor);
+plot(SceneAxes,RightCones(:,1),RightCones(:,2),'color',RightColor,...
+    'linewidth',1,'marker','o','linestyle','-','markersize',...
+    Msize,'markerfacecolor',RightColor,'markeredgecolor',ConeEdgeColor);
+
 hCarTransform=hgtransform(SceneAxes);
 hFrontWheelsTransform=hgtransform(SceneAxes);
 DrawCar(hCarTransform,hFrontWheelsTransform,L/2,L);
 hPastLine=animatedline(SceneAxes,0,0,'linewidth',2,'color','r');
+hSight=plot(SceneAxes,0,0,'linestyle','--','linewidth',1,'color',[0,0.5,0]);
 
 %TimeAxes
 DrawClock(TimeAxes);
@@ -301,11 +316,12 @@ UserData.hCarTransform = hCarTransform;
 UserData.hFrontWheelsTransform = hFrontWheelsTransform;
 UserData.hPastLine=hPastLine;
 UserData.hTimeTxt = hTimeTxt;
-UserData.LimFactor=2;
+UserData.LimFactor=LimFactor;
 UserData.hSteeringWheelTransform = hSteeringWheelTransform;
 UserData.hSteeringAngleTxt = hSteeringAngleTxt;
 UserData.hOdometerArrow = hOdometerArrow;
 UserData.hOdometerTxt = hOdometerTxt;
+UserData.hSight = hSight;
 
 %Store in both figure and block
 set(gcbh,'UserData',UserData);
@@ -387,6 +403,14 @@ hOdometer=[hArc,hArrow];
 end
 function PushbuttonCallback(obj,eventdata,handle)
 set_param(bdroot(gcs),'SimulationCommand', 'stop');
+end
+function [x_theta,y_theta]=R2D(x,y,theta)
+x=x(:); y=y(:);
+Q=[cos(theta),-sin(theta)
+   sin(theta), cos(theta)];
+xy_theta=(Q*[x,y]')';
+x_theta=xy_theta(:,1);
+y_theta=xy_theta(:,2);
 end
 %% Unused fcns
 function CheckPrms(block)
