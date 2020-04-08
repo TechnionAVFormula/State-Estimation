@@ -17,6 +17,7 @@ else:
 YELLOW = messages.perception.Yellow
 BLUE = messages.perception.Blue
 ORANGE = messages.perception.Orange
+FAKECONE = -10
 
 '''
 orderByDeluanay takes:
@@ -56,57 +57,63 @@ def orderByDeluanay(Cones, CarState):
 	
 	order = 1
 	for cone in yCones:
-		returnCone = copy.deepcopy(coneTemplate)
-		returnCone.x = cone[0]
-		returnCone.y = cone[1]
-		returnCone.type = YELLOW
-		returnCone.order = order
-		returnYellow.append(returnCone)
-		order += 1
+		if cone[3] != FAKECONE:
+			returnCone = copy.deepcopy(coneTemplate)
+			returnCone.x = cone[0]
+			returnCone.y = cone[1]
+			returnCone.type = YELLOW
+			returnCone.order = order
+			returnYellow.append(returnCone)
+			order += 1
 	
 	order = 1
 	for cone in bCones:
-		returnCone = copy.deepcopy(coneTemplate)
-		returnCone.x = cone[0]
-		returnCone.y = cone[1]
-		returnCone.type = BLUE
-		returnCone.order = order
-		returnBlue.append(returnCone)
-		order += 1
+		if cone[3] != FAKECONE:
+			returnCone = copy.deepcopy(coneTemplate)
+			returnCone.x = cone[0]
+			returnCone.y = cone[1]
+			returnCone.type = BLUE
+			returnCone.order = order
+			returnBlue.append(returnCone)
+			order += 1
 		
 	for cone in bLostCones:
-		returnCone = copy.deepcopy(coneTemplate)
-		returnCone.x = cone[0]
-		returnCone.y = cone[1]
-		returnCone.type = BLUE
-		returnCone.order = 0
-		returnLostBlue.append(returnCone)
+		if cone[3] != FAKECONE:
+			returnCone = copy.deepcopy(coneTemplate)
+			returnCone.x = cone[0]
+			returnCone.y = cone[1]
+			returnCone.type = BLUE
+			returnCone.order = 0
+			returnLostBlue.append(returnCone)
 		
 	for cone in yLostCones:
-		returnCone = copy.deepcopy(coneTemplate)
-		returnCone.x = cone[0]
-		returnCone.y = cone[1]
-		returnCone.type = YELLOW
-		returnCone.order = 0
-		returnLostYellow.append(returnCone)
+		if cone[3] != FAKECONE:
+			returnCone = copy.deepcopy(coneTemplate)
+			returnCone.x = cone[0]
+			returnCone.y = cone[1]
+			returnCone.type = YELLOW
+			returnCone.order = 0
+			returnLostYellow.append(returnCone)
 		
 	for cone in mt.BackCones:
-		returnCone = copy.deepcopy(coneTemplate)
-		returnCone.x = cone[0]
-		returnCone.y = cone[1]
-		returnCone.order = -1
-		if cone[2] == 98:
-			returnCone.type = BLUE
-			returnLostBlue.append(returnCone)
-		if cone[2] == 121:
-			returnCone.type = YELLOW
-			returnLostBlue.append(returnCone)
+		if cone[3] != FAKECONE:
+			returnCone = copy.deepcopy(coneTemplate)
+			returnCone.x = cone[0]
+			returnCone.y = cone[1]
+			returnCone.order = -1
+			if cone[2] == 98:
+				returnCone.type = BLUE
+				returnLostBlue.append(returnCone)
+			elif cone[2] == 121:
+				returnCone.type = YELLOW
+				returnLostYellow.append(returnCone)
+		
 		
 	return returnBlue, returnYellow, returnLostBlue, returnLostYellow
 
 
 class MapTrack:
-	def __init__(self,Cones,CarCG,CarVel,SphereR=10000, CarLength=1):
+	def __init__(self,Cones,CarCG,CarVel,SphereR=10000, CarLength=10):
 		self.Cones=Cones #matrix mx3 [x,y,color]. color = 98(blue)/121(yellow)
 		self.CarCG=CarCG #[x,y]
 		self.CarDir=CarVel/np.linalg.norm(CarVel) #[x,y] of car direction
@@ -145,15 +152,15 @@ class MapTrack:
 		YaddFlag=FrontYellowCones.size==0
 		if BaddFlag:
 			BNew=self.CarCG+self.CarLength*RotateVector(self.CarDir,+Angle4FakeCones) #add cone to the left
-			Cones=np.vstack([Cones,np.hstack([BNew,98,-10])]) #add fake yellow cone @ the buttom of matrix
+			Cones=np.vstack([Cones,np.hstack([BNew,98,FAKECONE])]) #add fake yellow cone @ the buttom of matrix
 		if YaddFlag: #no yellow cones exist
 			YNew=self.CarCG+self.CarLength*RotateVector(self.CarDir,-Angle4FakeCones) #add cone to the right
-			Cones=np.vstack([Cones,np.hstack([YNew,121,-10])]) #add fake yellow cone @ the buttom of matrix
+			Cones=np.vstack([Cones,np.hstack([YNew,121,FAKECONE])]) #add fake yellow cone @ the buttom of matrix
 
 		self.Cones4Calc=Cones
 		return Cones
 		
-	def OrderCones(self,MaxItrAmnt=20,CostThreshold=-0.2,ColorCostWeight=0.6, \
+	def OrderCones(self,MaxItrAmnt=25,CostThreshold=-0.2,ColorCostWeight=0.6, \
                    RRatioThreshold=20):
 		'''
 		Input:
@@ -176,7 +183,7 @@ class MapTrack:
 		DT=Delaunay(Cones[:,:2]) #Triangulate only /w Cones
 		ID=DT.find_simplex(self.CarCG) #attempt to find triangle which contains CarCG
 		if ID==-1: #if CarCG isoutside of convex hull
-			Cones=np.vstack([Cones,np.hstack([self.CarCG,0,-10])]) #add Car to Cones as a fake cone
+			Cones=np.vstack([Cones,np.hstack([self.CarCG,0,FAKECONE])]) #add Car to Cones as a fake cone
 			DT=Delaunay(Cones[:,:2])#Triangulate /w Cones+CarCG
 			ID=DT.find_simplex(self.CarCG+0.5*self.CarLength*self.CarDir) #find first triangle to work with
 		if ID == -1: return  # no cones in sight. couldnt build a track
@@ -298,6 +305,8 @@ class MapTrack:
 		
 		nBlueCones = 0
 		nYellowCones = 0
+		nBackBlueCones = 0
+		nBackYellowCones = 0
 		for cone in self.SaveCones:
 			if cone[2] == 98:
 				nBlueCones +=1
@@ -309,26 +318,30 @@ class MapTrack:
 		for cone in self.OrderedYellowCones:
 			isFiltered[int(cone[3])] = 1
 		for cone in self.BackCones:
-			isFiltered[int(cone[3])] = 2
-
-		
+			if isFiltered[int(cone[3])] != 1:
+				isFiltered[int(cone[3])] = 2
+				if cone[2] == 98:
+					nBackBlueCones += 1
+				if cone[2] == 121:
+					nBackYellowCones += 1
+			else:
+				cone[2] = 0
+				
 		nFilteredBlueCones = int(self.OrderedBlueCones.size/4)
 		nFilteredYellowCones = int(self.OrderedYellowCones.size/4)
-		
-		self.LostBlue = np.empty([nBlueCones - nFilteredBlueCones, 4])
-		self.LostYellow = np.empty([nYellowCones - nFilteredYellowCones, 4])
-		
+		print( self.OrderedYellowCones )
+		self.LostBlue = np.zeros([nBlueCones - nFilteredBlueCones - nBackBlueCones + 1, 4])
+		self.LostYellow = np.zeros([nYellowCones - nFilteredYellowCones - nBackYellowCones + 1, 4])
 		bCounter = 0
 		yCounter = 0
 		for i in range(0, isFiltered.size):
-			if isFiltered[i] == 0:
-				if self.SaveCones[i][2] == 98:
+			if int(isFiltered[i]) == 0 and self.SaveCones[i][3] != FAKECONE:
+				if int(self.SaveCones[i][2]) == 98:
 					self.LostBlue[bCounter] = self.SaveCones[i]
 					bCounter += 1
-				elif self.SaveCones[i][2] == 121:
+				elif int(self.SaveCones[i][2]) == 121:
 					self.LostYellow[yCounter] = self.SaveCones[i]
 					yCounter += 1
-		
 		
 		
 		
