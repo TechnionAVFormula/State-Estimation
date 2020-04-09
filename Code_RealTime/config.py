@@ -6,7 +6,7 @@ class ConfigEnum(Enum):
     LOCAL_TEST = 3
 
 ## Choose method of running the whole State Estimation Module
-CONFIG = ConfigEnum.COGNATA_SIMULATION
+CONFIG = ConfigEnum.LOCAL_TEST
 # CONFIG = ConfigEnum.LOCAL_TEST 
 # CONFIG = ConfigEnum.REAL_TIME
 
@@ -15,4 +15,4 @@ IN_MESSAGE_FILE = 'Messages/input_test.messages'
 OUT_MESSAGE_FILE = 'Messages/state.messages'
 
 ## Choose if to print in debug mode:
-IS_DEBUG_MODE = False
+IS_DEBUG_MODE = True

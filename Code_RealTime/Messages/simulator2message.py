@@ -1,12 +1,5 @@
-import sys
-sys.path.append("numpy_path")
-
-
-
-
+import scipy.io as sio
 import numpy as np
 
 
-a  = np.array([] )
-
-# mat = io.loadmat('example.mat')
+# mat = sio.loadmat('example.mat')

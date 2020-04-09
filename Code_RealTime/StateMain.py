@@ -3,7 +3,7 @@ from SystemRunnerPart.StateEstClient import StateEstClient
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
 from class_defs.OrderedConesClass import OrderedCones
-from OrderCones.orderConesMain    import orderCones
+from OrderCones.OrderConesMain    import orderCones
 from class_defs.Cone import Cone
 
 ## import depanding on running state / configuration state:
@@ -25,12 +25,10 @@ import google.protobuf.json_format as proto_format
 import json
 
 
-
 #typical python stuff:
 import math
 import time
 import signal
-import sys
 import numpy as np
 
 
@@ -38,6 +36,7 @@ class State:
     def __init__(self):
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
+        self.is_kalman_filter = False
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
@@ -209,6 +208,7 @@ class State:
 
         # Make the message:
         data = self.formula_state_msg()
+
         if self.is_debug_mode:
             print_proto_message(data)
 
