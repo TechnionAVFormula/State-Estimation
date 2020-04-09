@@ -1,7 +1,7 @@
 %% Initalize
 
 IMUdt=0.01; %from simulation
-GPSdt=0.5; %from simulation
+GPSdt=0.1; %from simulation
 T=simout.Ground_Truth.x.Time(end); %max simulation time seconds
 IMUtime=0:IMUdt:T; %shortest time in system - we will run on it. same as ground truth_time
 
