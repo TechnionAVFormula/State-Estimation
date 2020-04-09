@@ -1,5 +1,6 @@
 # Requirements:
 - numpy
+- scipy
 - protobuf
 
 # About:
