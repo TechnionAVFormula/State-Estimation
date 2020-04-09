@@ -6,8 +6,8 @@ class ConfigEnum(Enum):
     LOCAL_TEST = 3
 
 ## Choose method of running the whole State Estimation Module
-CONFIG = ConfigEnum.LOCAL_TEST
-# CONFIG = ConfigEnum.LOCAL_TEST 
+# CONFIG = ConfigEnum.COGNATA_SIMULATION
+CONFIG = ConfigEnum.LOCAL_TEST 
 # CONFIG = ConfigEnum.REAL_TIME
 
 ## Choose message input and output

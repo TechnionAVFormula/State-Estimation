@@ -5,6 +5,7 @@ from class_defs.StateEst_CarState import CarState
 from class_defs.OrderedConesClass import OrderedCones
 from OrderCones.OrderConesMain    import orderCones
 from class_defs.Cone import Cone
+from KalmanFilter.EKF_Slam_Class import Kalman
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -42,11 +43,16 @@ class State:
         self._message_timeout = 0.01
         #EKF:
         self._car_state = CarState()
+
+        if self.is_kalman_filter:
+            self._kalman_filter = Kalman()
+
         #cone map:
         self._cone_map =  np.array([] , dtype=Cone )
         self._ordered_cones = OrderedCones()
         self._running_id = 1             
         
+
 
 
     def start(self):
