@@ -3,6 +3,17 @@ import numpy as np
 import math
 
 
+## import depanding on running state / configuration state:
+from ..config import CONFIG , ConfigEnum , IS_DEBUG_MODE
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+
+
 class ConeMap():
 
     def __init__(self):
