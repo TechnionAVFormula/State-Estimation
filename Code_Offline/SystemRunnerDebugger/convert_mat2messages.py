@@ -1,12 +1,17 @@
 #!python
 #!/usr/bin/env python
+# Common tools:
 import scipy.io as sio
 import math
 import numpy as np 
 import matplotlib.pyplot as plt 
+
+#oct2py is used to run octave code on a python script. 
+# octave is a tool to  read and manage matlab scripts and files
 from oct2py import Oct2Py
 oc = Oct2Py()
 
+#Messages and Client stuff:
 from create_message_file import create_cone_message , create_gps_message , create_IMU_message
 from pyFormulaClientNoNvidia import messages
 from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
@@ -27,9 +32,13 @@ def calc_perception_cone(cone_x , cone_y , car_x , car_y , car_theta):
 
 
 
-
-
 def main():
+
+    # Establish the client:
+    perception_client = FormulaClient(ClientSource.PERCEPTION, 
+        read_from_file=os.devnull, write_to_file='fromSimulation.messages')
+    perception_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
+
 
     # use octave with oct2py to load the struct:
     simulation_results = 'LoopTest_01.mat'
@@ -45,6 +54,7 @@ def main():
     num['tests']       = int(round(  oc.size(Cones.Time)[0][0]           )) 
     num['left_cones']  = int(round(  oc.size(Cones.LeftConesSeen)[0][1]  ))
     num['right_cones'] = int(round(  oc.size(Cones.rightConesSeen)[0][1] ))
+
 
     # for each time stamp:
     for i in range(num['tests']):
@@ -73,7 +83,9 @@ def main():
                     },
                  )                
         if len( cone_arr ) > 0:
-            pass
+            msg = create_cone_message(cone_arr)
+            msg.header.timestamp.CopyFrom(messages.get_proto_system_timestamp())
+            perception_conn.send_message(msg)
 
 
 '''
