@@ -6,6 +6,8 @@ from class_defs.OrderedConesClass import OrderedCones
 from OrderCones.OrderConesMain    import orderCones
 from class_defs.Cone import Cone
 from KalmanFilter.EKF_Slam_Class import Kalman
+from ConeMapping.ConeMapMain import ConeMap
+
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -17,6 +19,8 @@ elif ( CONFIG == ConfigEnum.LOCAL_TEST):
 else:
     raise NameError('User Should Choose Configuration from config.py')
 
+# for plotting maps:
+from tkinter import Tk, Canvas
 
 
 # for showing messages:
@@ -48,7 +52,8 @@ class State:
             self._kalman_filter = Kalman()
 
         #cone map:
-        self._cone_map =  np.array([] , dtype=Cone )
+        #self._cone_map =  np.array([] , dtype=Cone )
+        self._cone_map = ConeMap()
         self._ordered_cones = OrderedCones()
         self._running_id = 1             
         
@@ -205,7 +210,8 @@ class State:
  
         return data
     
-
+    def dash_board_message(self):
+        print_map(self._cone_map.get_all_cones)
 
     def send_message2control(self, msg_in):
         msg_id = msg_in.header.id
@@ -225,6 +231,8 @@ class State:
     # =============================================== Run: =============================================== #
     def run(self):
         while True:
+
+            self.dash_board_message()
 
             ## Server:
             try:
@@ -271,6 +279,22 @@ class State:
     # =============================================== Run: =============================================== #
             
     #end run(self)
+'''
+End of class
+'''
+
+def print_map(cone_array):
+    root = Tk()
+    my_canvas = Canvas(root, width=1200, height=600)   
+    
+    for cone in cone_array:
+        if cone.type == BLUE:
+            my_canvas.create_oval(cone.x-3,cone.y-3,cone.x+3,cone.y+3,fill="blue")
+        if cone.type == YELLOW:
+            my_canvas.create_oval(cone.x-3,cone.y-3,cone.x+3,cone.y+3,fill="yellow")
+        
+    my_canvas.pack()
+    root.mainloop()
 
 
 state = State()
