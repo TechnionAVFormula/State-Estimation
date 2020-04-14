@@ -15,7 +15,7 @@ oc = Oct2Py()
 from create_message_file import create_cone_message , create_gps_message , create_IMU_message
 from pyFormulaClientNoNvidia import messages
 from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
-
+import os
 
 def calc_perception_cone(cone_x , cone_y , car_x , car_y , car_theta):
     delta_x = cone_x - car_x
@@ -83,7 +83,10 @@ def main():
                     },
                  )                
         if len( cone_arr ) > 0:
+            time = Ground_Truth.Time[i][0]
+
             msg = create_cone_message(cone_arr)
+            msg.header.timestamp.FromSeconds(0.01)
             msg.header.timestamp.CopyFrom(messages.get_proto_system_timestamp())
             perception_conn.send_message(msg)
 
