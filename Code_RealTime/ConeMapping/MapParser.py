@@ -76,7 +76,6 @@ class Parse_Map2ConeArray:
 			
 	def printMap(self):
 		root = Tk()
-
 		my_canvas = Canvas(root, width=1200, height=600)
 
 		for cone in self.cones:
