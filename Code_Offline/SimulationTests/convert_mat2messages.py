@@ -11,6 +11,13 @@ import matplotlib.pyplot as plt
 from oct2py import Oct2Py
 oc = Oct2Py()
 
+# for relative path
+import os 
+import sys
+current_dir_name = os.path.dirname(__file__)
+relative_dir_name = os.path.join(current_dir_name, '../SystemRunnerDebugger')
+sys.path.append(relative_dir_name)
+
 #Messages and Client stuff:
 from create_message_file import create_cone_message , create_gps_message , create_IMU_message
 from pyFormulaClientNoNvidia import messages
@@ -67,13 +74,17 @@ def add_cone_to_cone_array( Ground_Truth , noised_cones , cone_arr , test_ind , 
 
 
 
-def find_GPS_measurment_at_time( time_in_milisec , Measurements):
+def find_measurment_at_time( time_to_find_in_milisec , measurement_times):
     is_exist = False
-    num_gps_measurments = int(round(  oc.size(Measurements.GPS_Time)[0][1] ))
-    # for gps_ind in range()
+    
+    for ind in range( len(measurement_times) ):
+        measure_time_in_milisec = int( measurement_times[ind][0] * 1000  )
 
+        if measure_time_in_milisec == time_to_find_in_milisec:
+            is_exist = True
+            return ind , is_exist 
 
-    return gps_ind , is_exist 
+    return ind , is_exist 
 
 
 
@@ -83,7 +94,7 @@ def main(output_file_name , input_mat_name):
     # Establish the client:
     perception_client = FormulaClient(ClientSource.PERCEPTION, 
         read_from_file=os.devnull, write_to_file=output_file_name)
-    perception_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
+    simulation_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
 
 
     # use octave with oct2py to load the struct:
@@ -129,19 +140,38 @@ def main(output_file_name , input_mat_name):
             # if there are cones, make a cone message:             
             if len( cone_arr ) > 0:
                 if PRINT_ON_MSG:
-                    print(f"cone msg on test {test_ind}")
+                    print(f"cone msg on index {test_ind}. num_cones={len( cone_arr )}")
+                #create message and send it (to file):
                 msg = create_cone_message(cone_arr)
                 msg.header.timestamp.FromMilliseconds( time_in_milisec )
-                perception_conn.send_message(msg)
+                simulation_conn.send_message(msg)
 
         '''
         GPS Measurements:
         '''
-        gps_ind , is_exist = find_GPS_measurment_at_time( time_in_milisec , Measurements ) 
+        gps_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.GPS_Time ) 
+        if is_exist:
+            x = Measurements.GPS_x[gps_ind][0]
+            y = Measurements.GPS_y[gps_ind][0]
+            z = 0
+            if PRINT_ON_MSG:
+                print(f"GPS  msg on index {test_ind}. x={x} , y={y}")
+            #create message and send it (to file):
+            msg = create_gps_message(x,y,z)
+            msg.header.timestamp.FromMilliseconds( time_in_milisec )
+            simulation_conn.send_message(msg)
+
 
         '''
-        GPS Measurements:
+        IMU Measurements:
         '''
+        imu_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.IMU_Time ) 
+        if is_exist:
+            if PRINT_ON_MSG:
+                print(f"IMU  msg on index {test_ind}")
+            
+
+        
     
 
     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^ #
@@ -151,7 +181,7 @@ def main(output_file_name , input_mat_name):
     exit_data = messages.server.ExitMessage()
     exit_msg = messages.common.Message()
     exit_msg.data.Pack(exit_data)
-    perception_conn.send_message(exit_msg)
+    simulation_conn.send_message(exit_msg)
 
 '''
 end main
