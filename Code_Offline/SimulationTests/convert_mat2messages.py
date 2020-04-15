@@ -66,6 +66,17 @@ def add_cone_to_cone_array( Ground_Truth , noised_cones , cone_arr , test_ind , 
     return cone_arr
 
 
+
+def find_GPS_measurment_at_time( time_in_milisec , Measurements):
+    is_exist = False
+    num_gps_measurments = int(round(  oc.size(Measurements.GPS_Time)[0][1] ))
+    # for gps_ind in range()
+
+
+    return gps_ind , is_exist 
+
+
+
 def main(output_file_name , input_mat_name):
 
 
@@ -78,7 +89,7 @@ def main(output_file_name , input_mat_name):
     # use octave with oct2py to load the struct:
     simulation_results =  input_mat_name 
     data = oc.feval(PATH2READ_SIMULATION_RESULTS_M,simulation_results)
-
+        
     # The sub stucts:
     Cones           = data.Cones
     Measurements    = data.Measurements
@@ -123,8 +134,16 @@ def main(output_file_name , input_mat_name):
                 msg.header.timestamp.FromMilliseconds( time_in_milisec )
                 perception_conn.send_message(msg)
 
+        '''
+        GPS Measurements:
+        '''
+        gps_ind , is_exist = find_GPS_measurment_at_time( time_in_milisec , Measurements ) 
 
-        '''Cones:'''
+        '''
+        GPS Measurements:
+        '''
+    
+
     # ^^^^^^^^^^^^^^^^^^^^^^^^^^^ #
     # END for each time stamp:
 

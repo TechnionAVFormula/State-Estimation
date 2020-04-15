@@ -12,12 +12,7 @@ plt.style.use("seaborn-pastel")
 A = np.array([[0], [0], [0]])
 GPS = np.array([[0], [0]])
 K = Kalman()
-K.State_Correction = np.array([100, 0, 0, 1, ma.pi / 2]).reshape([5, 1])
-K.Covariance_Update = 0.01 * np.eye(len(K.State_Correction))
-K.Motion_Noise = np.diag([3, 0 ** 2])
-K.Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
-K.Measure_GPS_Noise = np.diag([0.0025, 0.0025])
-K.External_Measure_Noise = np.diag([3, 0.1])
+
 
 fig = plt.figure()
 ax1 = fig.add_subplot(1, 1, 1)
