@@ -1,4 +1,4 @@
-from sklearn.cluster import OPTICS, cluster_optics_dbscan
+from sklearn.cluster import OPTICS, cluster_optics_dbscan , DBSCAN
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,20 +18,22 @@ C5 = [3, -2] + 1.6 * np.random.randn(n_points_per_cluster, 2)
 C6 = [5, 6] + 2 * np.random.randn(n_points_per_cluster, 2)
 X = np.vstack((C1, C2, C3, C4, C5, C6))
 
-clust = OPTICS(min_samples=50, xi=.05, min_cluster_size=.05)
+# clust = OPTICS(min_samples=50, xi=.05, min_cluster_size=.05)
+clust = DBSCAN(eps=1 , min_samples=5)
 
 # Run the fit
 clust.fit(X)
 
+
+'''
 labels_050 = cluster_optics_dbscan(reachability=clust.reachability_,
                                    core_distances=clust.core_distances_,
                                    ordering=clust.ordering_, eps=0.5)
 labels_200 = cluster_optics_dbscan(reachability=clust.reachability_,
                                    core_distances=clust.core_distances_,
                                    ordering=clust.ordering_, eps=2)
-
+'''
 space = np.arange(len(X))
-reachability = clust.reachability_[clust.ordering_]
 labels = clust.labels_[clust.ordering_]
 
 plt.figure(figsize=(10, 7))

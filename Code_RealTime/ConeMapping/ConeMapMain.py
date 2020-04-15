@@ -1,14 +1,34 @@
-from class_defs.Cone import Cone
 import numpy as np
 import math
 
 
-class ConeMap():
+## for relative path
+import os 
+import sys
+current_dir_name = os.path.dirname(__file__)
+relative_dir_name = os.path.join(current_dir_name, '..')
+sys.path.append(relative_dir_name)
 
+
+from class_defs.Cone import Cone
+
+## import depanding on running state / configuration state:
+from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+
+
+class ConeMap():
     def __init__(self):
         # Hypre Params:
         self.filter_freq = 100
         self.real_cone_threshold = 50
+
 
         # dynamic propertise:
         self._cone_map = np.array( []   ,   dtype=Cone)
@@ -34,8 +54,6 @@ class ConeMap():
 
 
         return real_cones
-
-
 
 
     

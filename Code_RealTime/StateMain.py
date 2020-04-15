@@ -38,6 +38,7 @@ class State:
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
+        self.is_cone_clusttering = False
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
@@ -58,7 +59,7 @@ class State:
     def start(self):
         self._client.connect(1)
         if CONFIG == ConfigEnum.LOCAL_TEST:
-            self._client.set_read_delay(0.1)
+            self._client.set_read_delay(0.01)
         self._client.start()
 
     def stop(self):
@@ -233,7 +234,7 @@ class State:
                     if self.process_server_message(server_msg):
                         return
             except Exception as e:
-                pass
+                print(e)
             
             ## GPS:
             try:
@@ -264,6 +265,8 @@ class State:
                 cone_msg.data.Unpack(cone_map)  
                 if self.is_debug_mode:
                     print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
+                    if len(cone_map.cones) > 8:
+                        print("OMG SO MANY CONES!!!")
                 self.process_cones_message(cone_map)
                 self.send_message2control(cone_msg) 
             except Exception as e:

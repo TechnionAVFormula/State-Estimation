@@ -3,14 +3,66 @@ import math as ma
 from numpy.random import randn
 from numpy.linalg import inv, norm
 
+'''
+## import depanding on running state / configuration state:
+from ..config import CONFIG , ConfigEnum , IS_DEBUG_MODE
 
-class Kalman:
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+'''
+
+
+class Kalman(config = 1):
     def __init__(self):
         self.Alpha = 1000
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
         self.Number_of_Cones = 0
+        if (CONFIG  == ConfigEnum.REAL_TIME):
+            # Real time covariance.
+            pass
+        
+        elif ( CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+            # Test values:
+            self.State_Correction = np.zeros([5 , 1])
+            self.Covariance_Update = 0.01 * np.eye(len(self.State_Correction))
+            self.Motion_Noise = np.diag([3, 0 ** 2])
+            self.Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
+            self.Measure_GPS_Noise = np.diag([0.0025, 0.0025])
+            self.External_Measure_Noise = np.diag([3, 0.1])
+        '''
+        function [P,R,Q]  = initial_cov_mats()
+              %x    %y      %Vx  %Vy   %Theta
+R  =   [ [    2   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  2  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.1555     ,  0         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.1555         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0         , 0.22]   ]  ;
+        %measurement noise of x,y are currently sheker ve'cazav because I didn't find
+        %the error of the GPS
+        %theta measurement noise given in degrees
+        %I uesd the error given in the files plus the statistical measurment error
+Q  =   [ [    3   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  3  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.23     ,  0           , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.23        , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0           , 0.33]   ]  ;   
+        %same here for x,y. Nir please be proud of me 
+        %process noise calculated weighting the filter's update step and dynamic model
+        P =  [0.124536262397879              ,1.68586023371090e-07               ,0                                         ,0                                             ,-2.04133926343496e-08 ; ...
+                1.68586023371084e-07         ,0.124583808868131                    ,0                                          ,0                                              ,-0.00353120114306259 ;
+                 0                                            ,0                                                   ,0.118614066163451           ,0.0186140661634507             ,0                                     ; ...
+                 0                                            ,0                                                   ,0.0186140661634507         ,0.118614066163451               ,0                                     ; 
+                 -2.04133926343496e-08      ,-0.00353120114306259                ,0                                          ,0                                              ,2.65329138921966        ] ;
+ 
+end
+        '''
+
         self.Slip_angle = np.array([])
         self.Motion_Noise = np.array([])
         self.Measure_Acc_Noise = np.array([])

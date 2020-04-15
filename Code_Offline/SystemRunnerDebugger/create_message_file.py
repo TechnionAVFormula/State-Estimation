@@ -50,7 +50,7 @@ def main():
 
     # Establish the client:
     perception_client = FormulaClient(ClientSource.PERCEPTION, 
-        read_from_file=os.devnull, write_to_file='perception.messages')
+        read_from_file=os.devnull, write_to_file='fromSimulation.messages')
     perception_conn = perception_client.connect(SYSTEM_RUNNER_IPC_PORT)
     
     

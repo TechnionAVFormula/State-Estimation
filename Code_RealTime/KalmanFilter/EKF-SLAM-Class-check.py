@@ -15,12 +15,16 @@ Yreal = []
 A = np.array([[0], [0], [0]])
 GPS = np.array([[0], [0]])
 K = Kalman()
+<<<<<<< HEAD
 K.State_Correction = np.array([50, 0, 0, 10, ma.pi / 2]).reshape([5, 1])
 K.Covariance_Update = 0.1 * np.eye(len(K.State_Correction))
 K.Motion_Noise = np.diag([0.025, 0 ** 2])
 K.Measure_Acc_Noise = np.diag([0.000025, 0.000025, 0.05])
 K.Measure_GPS_Noise = np.diag([0.00025, 0.00025])
 K.External_Measure_Noise = np.diag([5, 0.1])
+=======
+
+>>>>>>> cf00a7a3b116f7aae59320712a1100edb6d93d26
 
 fig = plt.figure()
 ax1 = fig.add_subplot(1, 1, 1)
