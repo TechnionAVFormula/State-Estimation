@@ -28,6 +28,7 @@ class Kalman:
         self.Measure_Accelerometer_Model = np.array([])
         self.Control_Command = np.array([])
         self.Addinig_State = np.array([])
+        self.Rotational_Speed = []
 
     @property
     def Measure_GPS(self):
@@ -62,7 +63,7 @@ class Kalman:
             self.Vehicle_Total_Length,
         )
         V_tot = norm(self.State_Correction[2:4])
-        DTheta = (
+        self.Rotational_Speed = (
             V_tot
             * ma.cos(self.Slip_angle)
             * ma.tan(self.Control_Command[1])
@@ -95,7 +96,7 @@ class Kalman:
                     * ma.sin(self.State_Correction[4] + self.Slip_angle)
                     * self.Control_Command[0]
                 ],
-                [self.Time_Delta * DTheta],
+                [self.Time_Delta * self.Rotational_Speed],
             ],
             dtype="float",
         ).reshape([5, 1])

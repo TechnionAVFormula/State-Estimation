@@ -98,13 +98,13 @@ def Check_Circle():
     return (Sensors_data, X, y, t, u)
 
 
-def Check_path(time, R, Theta, GPStimedelta, Perceptiontimedelta):
-    x = R * ma.cos(time / 2 / R)
-    y = R * ma.sin(time / R)
-    xd = -1 / 2 * ma.sin(time / 2 / R)
-    yd = 1 * ma.cos(time / R)
-    xdd = -1 / 4 / R * ma.cos(time / 2 / R)
-    ydd = -1 / 4 / R * ma.sin(time / R)
+def Check_path(time, R, Theta, GPStimedelta, Perceptiontimedelta, xx, yy):
+    x = R * ma.cos(time * 10 / 2 / R)
+    y = R * ma.sin(time * 10 / R)
+    xd = -10 / 2 * ma.sin(time * 10 / 2 / R)
+    yd = 10 * ma.cos(time * 10 / R)
+    xdd = -10 / 4 / R * ma.cos(time * 10 / 2 / R)
+    ydd = -10 / 4 / R * ma.sin(time * 10 / R)
     ImuData = np.array(
         [
             (xdd * ma.cos(Theta) + ydd * ma.sin(Theta)) * (1 + randn(1) * 0.1 - 0.05),
@@ -117,25 +117,29 @@ def Check_path(time, R, Theta, GPStimedelta, Perceptiontimedelta):
     else:
         GPSdata = np.array([])
     if not time % Perceptiontimedelta:
-        t = np.arange(0, 4 * ma.pi, ma.pi / 5)
+        t = np.arange(0, 4 * ma.pi, ma.pi / 4)
         TrajCones = np.zeros([2, 2 * len(t)])
         j = len(t)
         for i in range(len(t)):
-            TrajCones[0][i] = (R - 3) * ma.cos(t[i] / 2)
-            TrajCones[1][i] = (R - 3) * ma.sin(t[i])
-            TrajCones[0][j] = (R + 3) * ma.cos(t[i] / 2)
-            TrajCones[1][j] = (R + 3) * ma.sin(t[i])
+            TrajCones[0][i] = (R - 5) * ma.cos(t[i] / 2)
+            TrajCones[1][i] = (R - 5) * ma.sin(t[i])
+            TrajCones[0][j] = (R + 5) * ma.cos(t[i] / 2)
+            TrajCones[1][j] = (R + 5) * ma.sin(t[i])
             j = j + 1
         Cones = []
         for i in range(2 * len(t)):
-            r = ma.sqrt((TrajCones[0, i] - x) ** 2 + (TrajCones[1, i] - y) ** 2)
-            T = ma.atan2(TrajCones[1, i] - y, TrajCones[0, i] - x) - Theta
-            if r < 30:
+            r = ma.sqrt((TrajCones[0, i] - x) ** 2 + (TrajCones[1, i] - y) ** 2) * (
+                1 + randn(1) * 0.05 - 0.025
+            )
+            T = ma.atan2(TrajCones[1, i] - y, TrajCones[0, i] - x) * (
+                1 + randn(1) * 0.05 - 0.025
+            )
+            if r < 20:
                 Cones.append([r, T])
         Cones = np.array(Cones, dtype="float")
     else:
         Cones = np.array([])
-    Steering = ma.atan2(y, x) - Theta
+    Steering = ma.atan2(y - yy, x - xx)
     Acceleration = (xdd * ma.cos(Theta) + ydd * ma.sin(Theta)) * (
         1 + randn(1) * 0.2 - 0.1
     )
