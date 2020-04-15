@@ -25,8 +25,11 @@ class Kalman(config = 1):
         self.Number_of_Cones = 0
         if (CONFIG  == ConfigEnum.REAL_TIME):
             # Real time covariance.
-            pass
-        
+            self.State_Correction = np.zeros([5 , 1])
+            self.Measure_GPS_Noise = np.diag([2, 2])
+            self.Measure_Acc_Noise = np.diag([0.1555, 0.1555, 0.22])
+            self.Motion_Noise = np.diag([3, 0 ** 2])
+            self.External_Measure_Noise = np.diag([3, 0.1])
         elif ( CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
             # Test values:
             self.State_Correction = np.zeros([5 , 1])
@@ -64,10 +67,6 @@ end
         '''
 
         self.Slip_angle = np.array([])
-        self.Motion_Noise = np.array([])
-        self.Measure_Acc_Noise = np.array([])
-        self.Measure_GPS_Noise = np.array([])
-        self.External_Measure_Noise = np.array([])
         self.State_Prediction = np.array([])
         self.Covariance_Prediction = np.array([])
         self.Measure_GPS = np.array([])
@@ -79,7 +78,6 @@ end
         self.Measure_GPS_Model = np.array([])
         self.Measure_Accelerometer_Model = np.array([])
         self.Control_Command = np.array([])
-        self.Addinig_State = np.array([])
         self.Rotational_Speed = []
 
     @property
