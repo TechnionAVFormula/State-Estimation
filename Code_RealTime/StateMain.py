@@ -6,6 +6,8 @@ from class_defs.OrderedConesClass import OrderedCones
 from OrderCones.OrderConesMain    import orderCones
 from class_defs.Cone import Cone
 from KalmanFilter.EKF_Slam_Class import Kalman
+from ConeMapping.ConeMapMain import ConeMap
+
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -17,6 +19,8 @@ elif ( CONFIG == ConfigEnum.LOCAL_TEST):
 else:
     raise NameError('User Should Choose Configuration from config.py')
 
+# for plotting maps:
+from tkinter import Tk, Canvas
 
 
 # for showing messages:
@@ -49,7 +53,8 @@ class State:
             self._kalman_filter = Kalman()
 
         #cone map:
-        self._cone_map =  np.array([] , dtype=Cone )
+        #self._cone_map =  np.array([] , dtype=Cone )
+        self._cone_map = ConeMap()
         self._ordered_cones = OrderedCones()
         self._running_id = 1             
         
@@ -205,8 +210,6 @@ class State:
         # data.left_bound_cones  = self._ordered_cones.blue_cones
  
         return data
-    
-
 
     def send_message2control(self, msg_in):
         msg_id = msg_in.header.id
@@ -226,6 +229,8 @@ class State:
     # =============================================== Run: =============================================== #
     def run(self):
         while True:
+
+            self.dash_board_message()
 
             ## Server:
             try:
@@ -274,7 +279,9 @@ class State:
     # =============================================== Run: =============================================== #
             
     #end run(self)
-
+'''
+End of class
+'''
 
 state = State()
 
