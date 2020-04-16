@@ -32,11 +32,12 @@ returnLostYellow - array of yellow cones not chosen to be ordered in same format
 '''
 
 def orderByDeluanay(Cones, CarState):
+	nCones = len(Cones)
 	coneTemplate = copy.deepcopy(Cones[0])
 	numCones = np.empty([len(Cones), 4])
 	numCar = [CarState.x,CarState.y]
 	numVel = [CarState.Vx,CarState.Vy]
-	for i in range(len(Cones)):
+	for i in range(nCones):
 		color = 0
 		if Cones[i].type == YELLOW:
 			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 121
@@ -56,8 +57,10 @@ def orderByDeluanay(Cones, CarState):
 	returnLostYellow = []
 	
 	order = 1
+	hasAppeard = np.zeros(nCones)
 	for cone in yCones:
-		if cone[3] != FAKECONE:
+		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
+			hasAppeard[int(cone[3])] = 1
 			returnCone = copy.deepcopy(coneTemplate)
 			returnCone.x = cone[0]
 			returnCone.y = cone[1]
@@ -68,7 +71,8 @@ def orderByDeluanay(Cones, CarState):
 	
 	order = 1
 	for cone in bCones:
-		if cone[3] != FAKECONE:
+		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
+			hasAppeard[int(cone[3])] = 1
 			returnCone = copy.deepcopy(coneTemplate)
 			returnCone.x = cone[0]
 			returnCone.y = cone[1]
@@ -77,8 +81,9 @@ def orderByDeluanay(Cones, CarState):
 			returnBlue.append(returnCone)
 			order += 1
 		
+
 	for cone in bLostCones:
-		if cone[3] != FAKECONE:
+		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)
 			returnCone.x = cone[0]
 			returnCone.y = cone[1]
@@ -87,7 +92,7 @@ def orderByDeluanay(Cones, CarState):
 			returnLostBlue.append(returnCone)
 		
 	for cone in yLostCones:
-		if cone[3] != FAKECONE:
+		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)
 			returnCone.x = cone[0]
 			returnCone.y = cone[1]
@@ -110,6 +115,23 @@ def orderByDeluanay(Cones, CarState):
 		
 		
 	return returnBlue, returnYellow, returnLostBlue, returnLostYellow
+	
+def getWeights(Cones, CarState):
+	coneTemplate = copy.deepcopy(Cones[0])
+	numCones = np.empty([len(Cones), 4])
+	numCar = [CarState.x,CarState.y]
+	numVel = [CarState.Vx,CarState.Vy]
+	for i in range(len(Cones)):
+		color = 0
+		if Cones[i].type == YELLOW:
+			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 121
+			numCones[i][3] = i
+		elif Cones[i].type == BLUE:
+			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 98
+			numCones[i][3] = i
+	
+	mt = MapTrack(numCones, numCar, numVel)
+	return mt.getWeights()
 
 
 class MapTrack:
@@ -159,8 +181,22 @@ class MapTrack:
 
 		self.Cones4Calc=Cones
 		return Cones
+	
+	#for testing purposes
+	def getWeights(self):
+		if self.Cones4Calc.shape[0] < 3:
+			return 0
+			
+		#initalize
+		Cones=self.Cones4Calc
 		
-	def OrderCones(self,MaxItrAmnt=25,CostThreshold=-0.2,ColorCostWeight=0.6, \
+		points = Cones[:,:2]
+		
+		#Triangulate
+		DT=Delaunay(points) #Triangulate only /w Cones
+		return (points[DT.simplices])
+		
+	def OrderCones(self,MaxItrAmnt=25,CostThreshold=-0.2,ColorCostWeight=0.3, \
                    RRatioThreshold=20):
 		'''
 		Input:
@@ -235,71 +271,6 @@ class MapTrack:
 		#Output Filtered Cones to class
 		self.SetFilteredCones()
 		
-	def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
-		'''
-		Input:
-		DT - DelaunayTriangulation containing DT.points and DT.simplices
-		ConesColors - colors of cones (98 for blue, 121 for yellow) with same
-		indexing as DT.Points
-		ID - number of triangle in DT.ConnectivityList (row index)
-		Dir - direction of enterance to triangle ID
-		CrossEdge - [V1,V2] of edge that was crossed to enter triangle ID
-		V1 and V2 refer to vertex indcies (row) in DT.Points
-		ColorCostWeight - weight for costfunction in triangles. Applied on first term - effect cone colors.
-
-		Output:
-		NewID - number of new triangle in DT.ConnectivityList (row index)
-		NewDir - direction of enterance to new triangle (NewID)
-		NewCrossEdge - [V1,V2] of edge that we crossed to get from ID->NewID
-		V1 and V2 refer to vertex indcies (row) in DT.Points
-		MinCost - price in cost function with which algorithm decided to go
-		RRatio - ratio between Circumcenter/InCenter radii
-		'''
-		V=DT.simplices[ID,:] #find vertex indcies of ID
-		P=np.hstack([DT.points[V,:],ConesColors[V].reshape(3,1)]) #Triangle cones
-		IC=InCenter(P[:,:2])[0] #find incenter of ID
-		EdgesInd=np.array([[0,1], #Edge1 #build indcies in V mapping to EdgesV by V[EdgesInd]
-						   [0,2], #Edge2
-						   [1,2]])#Edge3
-		EdgesV=V[EdgesInd]
-		EdgesInd=EdgesInd[~(np.any(EdgesV==CrossEdge[0],axis=1) &\
-							np.any(EdgesV==CrossEdge[1],axis=1)),:] #find the two edges to calculate for (not going backwards).
-		J1=EdgeCost(IC,P[EdgesInd[0,:],:],Dir,ColorCostWeight) #calculate costs
-		J2=EdgeCost(IC,P[EdgesInd[1,:],:],Dir,ColorCostWeight)
-		J=np.hstack([J1,J2]); MinCost=np.min(J); JminInd=np.argmin(J) #find Edge to cross by row index in Edges
-		NewCrossEdge=V[EdgesInd[JminInd,:]] #obtain Edge Vertices to cross (point indcies [V1,V2])
-		NewDir=OutFacingNormal(P[EdgesInd[JminInd,:],:2],IC) #calculate normal to cross edge
-		Attachments=np.where(np.any(DT.simplices==NewCrossEdge[0],axis=1) &\
-							 np.any(DT.simplices==NewCrossEdge[1],axis=1)) #find IDs that are connected to edge
-		NewID=np.squeeze(np.setdiff1d(Attachments,ID)) #NewID - New Triangle
-
-		if NewID.size==0:
-			RRatio=0 #filler
-			return NewID,NewDir,NewCrossEdge,MinCost,RRatio
-
-		NewV=DT.simplices[NewID,:] #find vertex indcies of NewID (=NewTriangle)
-		#NewV=NewV.reshape(3)
-		NewP=DT.points[NewV,:] #find points correlating to new vertex indcies
-		RRatio=CircumRadius(NewP)/InCenter(NewP)[1] #calculate RRatio of new triangle
-		return NewID,NewDir,NewCrossEdge,MinCost,RRatio
-		
-	def BackFilter(Cones,CarCG,CarDir):
-		'''
-		Input:
-		Cones - mx3 cones matrix containing [x,y,color]
-		CarCG - [x,y] of car position
-		CarDir - [x,y] normalized vector of car direction
-
-		Output:
-		FilteredCones - same format as cones. only cones that are infront of the vehicle
-		FInd - bool array FilteredCones=Cones(FInd,:)
-		'''
-		ConesR=Cones[:,:2]-CarCG #vectors of cones relative to car
-		DotProducts = np.matmul(ConesR, np.transpose(CarDir))  # dot product with normal (car direction)
-		FInd = DotProducts > 0  # find MidPoints infront of the vehicle (index)
-		FilteredCones=Cones[FInd,:]
-		return FilteredCones,FInd
-		
 	def SetFilteredCones(self):
 		isFiltered = np.zeros(int((self.SaveCones.size)/4))
 		
@@ -329,7 +300,6 @@ class MapTrack:
 				
 		nFilteredBlueCones = int(self.OrderedBlueCones.size/4)
 		nFilteredYellowCones = int(self.OrderedYellowCones.size/4)
-		print( self.OrderedYellowCones )
 		self.LostBlue = np.zeros([nBlueCones - nFilteredBlueCones - nBackBlueCones + 1, 4])
 		self.LostYellow = np.zeros([nYellowCones - nFilteredYellowCones - nBackYellowCones + 1, 4])
 		bCounter = 0
@@ -378,6 +348,26 @@ def TriOne(DT,ConesColors,ID,CarDir,ColorCostWeight):
 						 np.any(DT.simplices==NewCrossEdge[1],axis=1)) #find IDs that are connected to edge
 	NewID=np.squeeze(np.setdiff1d(Attachments,ID)) #NewID - New Triangle
 	return NewID,Newu,NewCrossEdge
+	
+def RecursiveEdgeCost(V,P,TriInCenter,edge,edges,Dir,delaunay,level,ColorCostWeight,maxlevel = 5):
+	if level == maxlevel:
+		return EdgeCost(edge)
+
+	#J2=EdgeCost(TriInCenter,P[edges[1,:],:],Dir,ColorCostWeight)
+	#print (J2)
+	
+	#get next triangle for edge1
+	edge1dir = OutFacingNormal(P[edges[0,:],:2],TriInCenter)
+	
+	
+	#get next triangle for edge2
+	
+	'''edge1cost=RecursiveEdgeCost(edge1,edge11,edge12,edge1dir,delaunay,level+1,maxlevel)
+	edge2cost=RecursiveEdgeCost(edge1,edge11,edge12,edge1dir,delaunay,level+1,maxlevel)
+	CurrentEdge = (CurrentEdge + min([edge1cost,edge2cost]))/2
+		
+	return CurrentEdge'''
+	return 0
 
 def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
 	'''
@@ -410,6 +400,7 @@ def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
 						np.any(EdgesV==CrossEdge[1],axis=1)),:] #find the two edges to calculate for (not going backwards).
 	J1=EdgeCost(IC,P[EdgesInd[0,:],:],Dir,ColorCostWeight) #calculate costs
 	J2=EdgeCost(IC,P[EdgesInd[1,:],:],Dir,ColorCostWeight)
+	RecursiveEdgeCost(V,P,IC,CrossEdge,EdgesInd,Dir,DT,0,ColorCostWeight)
 	J=np.hstack([J1,J2]); MinCost=np.min(J); JminInd=np.argmin(J) #find Edge to cross by row index in Edges
 	NewCrossEdge=V[EdgesInd[JminInd,:]] #obtain Edge Vertices to cross (point indcies [V1,V2])
 	NewDir=OutFacingNormal(P[EdgesInd[JminInd,:],:2],IC) #calculate normal to cross edge
@@ -426,6 +417,7 @@ def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
 	NewP=DT.points[NewV,:] #find points correlating to new vertex indcies
 	RRatio=CircumRadius(NewP)/InCenter(NewP)[1] #calculate RRatio of new triangle
 	return NewID,NewDir,NewCrossEdge,MinCost,RRatio
+	
 
 def EdgeCost(TriInCenter,EdgeCones,u,ColorCostWeight):
 	'''
@@ -449,9 +441,19 @@ def EdgeCost(TriInCenter,EdgeCones,u,ColorCostWeight):
 	J=EdgeCost(InCenter,EdgeCones,u,alpha)
 	print(J) #expect to be -2
 	'''
+	center = np.array([(EdgeCones[0][0]+EdgeCones[1][0])/2,(EdgeCones[0][1]+EdgeCones[1][1])/2])
+	dir1 = np.array([center[0]-EdgeCones[0][0],center[1]-EdgeCones[0][1]])
+	if np.cross(u,dir1) > 0:
+		leftPoint = EdgeCones[0]
+		rightPoint= EdgeCones[1]
+	else:
+		leftPoint = EdgeCones[1]
+		rightPoint= EdgeCones[0]
 	J=0 #initalize
 	if EdgeCones[0,2]==EdgeCones[1,2]: #if the same color
 		J=J+1
+	elif leftPoint[2] == 121:
+		J=J+1.9
 	else: #not the same color
 		J=J-1
 	J=ColorCostWeight*J-np.dot(u,OutFacingNormal(EdgeCones[:,:2],TriInCenter)) #+bad points for difference in direction
