@@ -3,6 +3,14 @@ import numpy as np
 from scipy.spatial import Delaunay
 import copy
 
+## for relative path
+import os 
+import sys
+current_dir_name = os.path.dirname(__file__)
+relative_dir_name = os.path.join(current_dir_name, '..')
+sys.path.append(relative_dir_name)
+
+
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum
 
@@ -38,7 +46,6 @@ def orderByDeluanay(Cones, CarState):
 	numCar = [CarState.x,CarState.y]
 	numVel = [CarState.Vx,CarState.Vy]
 	for i in range(nCones):
-		color = 0
 		if Cones[i].type == YELLOW:
 			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 121
 			numCones[i][3] = i

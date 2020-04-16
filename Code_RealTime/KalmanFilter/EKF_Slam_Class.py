@@ -16,7 +16,7 @@ else:
 '''
 
 
-class Kalman(config = 1):
+class Kalman():
     def __init__(self):
         self.Alpha = 1000
         self.Time_Delta = 0.01

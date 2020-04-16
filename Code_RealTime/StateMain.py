@@ -53,8 +53,8 @@ class State:
             self._kalman_filter = Kalman()
 
         #cone map:
-        #self._cone_map =  np.array([] , dtype=Cone )
-        self._cone_map = ConeMap()
+        self._cone_map =  np.array([] , dtype=Cone )
+        # self._cone_map = ConeMap()
         self._ordered_cones = OrderedCones()
         self._running_id = 1             
         
@@ -229,8 +229,6 @@ class State:
     # =============================================== Run: =============================================== #
     def run(self):
         while True:
-
-            self.dash_board_message()
 
             ## Server:
             try:
