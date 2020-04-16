@@ -167,8 +167,11 @@ def main(output_file_name , input_mat_name):
         '''
         imu_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.IMU_Time ) 
         if is_exist:
-            if PRINT_ON_MSG:
-                print(f"IMU  msg on index {test_ind}")
+            # if PRINT_ON_MSG:
+            #     print(f"IMU  msg on index {test_ind}")
+            pass
+
+        
             
 
         

@@ -11,6 +11,9 @@ State Estimation is the model dedicated for Navigation, Mapping and Error Estima
 ## StateMain.py:
 Them main object that should be initialized by the SystemRunnter.
 
+## ConeMapping
+Tracking and Clusttering cones.
+
 ## OrderCones:
 Get the correct sequence of conese that should be traversed, from the point of view of the car.
 
