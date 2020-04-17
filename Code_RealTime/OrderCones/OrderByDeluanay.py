@@ -46,6 +46,7 @@ def orderByDeluanay(Cones, CarState):
 	numCar = [CarState.x,CarState.y]
 	numVel = [CarState.Vx,CarState.Vy]
 	for i in range(nCones):
+		color = 0
 		if Cones[i].type == YELLOW:
 			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 121
 			numCones[i][3] = i
@@ -58,12 +59,9 @@ def orderByDeluanay(Cones, CarState):
 	bCones, yCones = mt.OrderedBlueCones, mt.OrderedYellowCones
 	bLostCones, yLostCones = mt.LostBlue, mt.LostYellow
 
-	returnBlue = []
-	returnYellow = []
-	returnLostBlue = []
-	returnLostYellow = []
 	
 	order = 1
+	returnYellow = []
 	hasAppeard = np.zeros(nCones)
 	for cone in yCones:
 		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
@@ -77,6 +75,7 @@ def orderByDeluanay(Cones, CarState):
 			order += 1
 	
 	order = 1
+	returnBlue = []
 	for cone in bCones:
 		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
 			hasAppeard[int(cone[3])] = 1
@@ -86,9 +85,9 @@ def orderByDeluanay(Cones, CarState):
 			returnCone.type = BLUE
 			returnCone.order = order
 			returnBlue.append(returnCone)
-			order += 1
-		
+			order += 1	
 
+	returnLostBlue = []
 	for cone in bLostCones:
 		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)
@@ -98,6 +97,7 @@ def orderByDeluanay(Cones, CarState):
 			returnCone.order = 0
 			returnLostBlue.append(returnCone)
 		
+	returnLostYellow = []
 	for cone in yLostCones:
 		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)

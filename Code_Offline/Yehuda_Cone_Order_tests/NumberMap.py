@@ -1,6 +1,6 @@
 from orderByDistance import *
 from OrderByDeluanay import *
-from tkinter import *
+import tkinter as tk
 
 """
 Take saved map and order cones by chosen function
@@ -17,6 +17,8 @@ class Vector:
 	r = 0
 	type = 0
 	order = 0
+	Vx = 0
+	Vy = 0
 
 class NumberdMap:
 	def readMap(self,fileName):
@@ -54,37 +56,46 @@ class NumberdMap:
 		carState = Vector()
 		carState.x = self.carPos.x
 		carState.y = self.carPos.y
+		carState.Vx = self.carDir.x
+		carState.Vy = self.carDir.y
 		#change function here
 		'''
 		orderFunc = OrderByDis(self.cones,carState)
 		bluePoints , yellowPoints = orderFunc.orderByDis()
 		
 		'''
+		bluePoints, yellowPoints, LostBlue, LostYellow = orderByDeluanay( self.cones,carState)
 		
-		bluePoints, yellowPoints, LostBlue, LostYellow = orderByDeluanay( self.cones, self.carPos, self.carDir)
-			
 		self.cones = bluePoints
 		self.cones.extend(yellowPoints)
 		self.cones.extend(LostBlue)
 		self.cones.extend(LostYellow)
+		
+		self.weights=getWeights(self.cones,carState)
+		
 			
 	def printMap(self):
-		root = Tk()
+		root = tk.Tk()
 
-		my_canvas = Canvas(root, width=1200, height=600)
+		my_canvas = tk.Canvas(root, width=1200, height=600)
 
 		for cone in self.cones:
 			if cone.type == BLUE:
 				my_canvas.create_oval(cone.x-3,cone.y-3,cone.x+3,cone.y+3,fill="blue")
-				label = Label(master = root,text=str(cone.order))
+				label = tk.Label(master = root,text=str(cone.order))
 				label.place(x=cone.x - 5,y= cone.y - 30)
 			if cone.type == YELLOW:
 				my_canvas.create_oval(cone.x-3,cone.y-3,cone.x+3,cone.y+3,fill="yellow")
-				label = Label(master = root,text=str(cone.order))
+				label = tk.Label(master = root,text=str(cone.order))
 				label.place(x=cone.x - 5,y= cone.y - 30)
 
 		my_canvas.create_oval(self.carPos.x-3,self.carPos.y-3,self.carPos.x+3,self.carPos.y+3,fill="purple")
 		my_canvas.create_line(self.carPos.x,self.carPos.y,self.carPos.x+self.carDir.x,self.carPos.y+self.carDir.y,fill="red")
+		
+		for weight in self.weights:
+			my_canvas.create_line(weight[0][0],weight[0][1], weight[1][0],weight[1][1])
+			my_canvas.create_line(weight[0][0],weight[0][1], weight[2][0],weight[2][1])
+			my_canvas.create_line(weight[2][0],weight[2][1], weight[1][0],weight[1][1])
 			
 		my_canvas.pack()
 
