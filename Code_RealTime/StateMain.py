@@ -42,7 +42,7 @@ class State:
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
-        self.is_cone_clusttering = False
+        self.is_cone_clusttering = True
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
@@ -53,10 +53,14 @@ class State:
             self._kalman_filter = Kalman()
 
         #cone map:
-        self._cone_map =  np.array([] , dtype=Cone )
-        # self._cone_map = ConeMap()
+        if self.is_cone_clusttering:
+            self._cone_map = ConeMap()
+        else:
+            self._cone_map =  np.array([] , dtype=Cone )
+            self._running_id = 1  
+
         self._ordered_cones = OrderedCones()
-        self._running_id = 1             
+                  
         
 
 
@@ -135,13 +139,23 @@ class State:
 
 
     def process_cones_message(self, cone_map):     
+
+        if self.is_cone_clusttering:
+            temp_cone_arr = np.array([] , dtype=Cone)
         #Analize all cones for position in map and other basic elements: 
         for perception_cone in cone_map.cones:
             state_cone = self.cone_convert_perception2our_cone(perception_cone)
 
-            #if it's a new cone in our map, add it:
-            if (self.check_exist_cone(state_cone) == False ):
-                self.add_new_cone(state_cone)   
+            if self.is_cone_clusttering:
+                new_elem = np.array([state_cone] )
+                temp_cone_arr = np.append(temp_cone_arr , new_elem) 
+            else:
+                #if it's a new cone in our map, add it:
+                if (self.check_exist_cone(state_cone) == False ):
+                    self.add_new_cone(state_cone)  
+
+        if self.is_cone_clusttering:
+            self._cone_map
         #Order Cones:
         self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
 		#ariela:now the cones are ordered
