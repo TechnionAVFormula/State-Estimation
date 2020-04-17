@@ -5,8 +5,8 @@ import numpy as np
 
 IS_PLOT_RESULTS = True
 
-def ClusteringOptics(X):
-    clust = OPTICS(min_samples=50, xi=.05, min_cluster_size=.05)
+def ClusteringOptics(X  , threshold):
+    clust = OPTICS(min_samples=threshold, xi=.05, min_cluster_size=.05)
     clust.fit(X)
     #space = np.arange(len(X)) 
     #reachability = clust.reachability_[clust.ordering_]

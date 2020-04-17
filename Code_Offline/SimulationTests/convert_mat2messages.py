@@ -24,6 +24,11 @@ from pyFormulaClientNoNvidia import messages
 from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
 import os
 
+
+#enum:
+BLUE    = messages.perception.Blue
+YELLOW  = messages.perception.Yellow
+
 '''
 Values to be used:
 '''
@@ -49,7 +54,7 @@ def calc_perception_cone(cone_x , cone_y , car_x , car_y , car_theta):
 
     return perception_x , perception_y
 
-def add_cone_to_cone_array( Ground_Truth , noised_cones , cone_arr , test_ind , cone_ind ):
+def add_cone_to_cone_array( Ground_Truth , noised_cones , cone_arr , test_ind , cone_ind , type):
     #true position:
     real_x      = Ground_Truth.x[test_ind][0]
     real_y      = Ground_Truth.y[test_ind][0]
@@ -67,7 +72,7 @@ def add_cone_to_cone_array( Ground_Truth , noised_cones , cone_arr , test_ind , 
             "x": perception_cone_x,
             "y": perception_cone_y,
             "z": perception_cone_z,
-            "type": messages.perception.Blue
+            "type": type
         }
     ) 
     return cone_arr
@@ -130,13 +135,13 @@ def main(output_file_name , input_mat_name):
                 is_seen = Cones.LeftConesSeen[test_ind][cone_ind]
                 if is_seen:
                     cone_arr = add_cone_to_cone_array( Ground_Truth , Cones.LeftConesNoise 
-                                                        , cone_arr , test_ind , cone_ind )  
+                                                        , cone_arr , test_ind , cone_ind , BLUE )  
             #For each right cone, check if it seen by car. if it is: make
             for cone_ind in range(num['right_cones']):
                 is_seen = Cones.RightConesSeen[test_ind][cone_ind]
                 if is_seen:
                     cone_arr = add_cone_to_cone_array( Ground_Truth , Cones.RightConesNoise 
-                                                        , cone_arr , test_ind , cone_ind )   
+                                                        , cone_arr , test_ind , cone_ind , YELLOW)   
             # if there are cones, make a cone message:             
             if len( cone_arr ) > 0:
                 if PRINT_ON_MSG:

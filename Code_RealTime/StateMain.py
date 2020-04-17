@@ -3,7 +3,7 @@ from SystemRunnerPart.StateEstClient import StateEstClient
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
 from class_defs.OrderedConesClass import OrderedCones
-from OrderCones.OrderConesMain    import orderCones
+from OrderCones.orderConesMain    import orderCones
 from class_defs.Cone import Cone
 from KalmanFilter.EKF_Slam_Class import Kalman
 from ConeMapping.ConeMapMain import ConeMap
@@ -155,7 +155,7 @@ class State:
                     self.add_new_cone(state_cone)  
 
         if self.is_cone_clusttering:
-            self._cone_map
+            self._cone_map.insert_new_points( temp_cone_arr )
         #Order Cones:
         self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
 		#ariela:now the cones are ordered

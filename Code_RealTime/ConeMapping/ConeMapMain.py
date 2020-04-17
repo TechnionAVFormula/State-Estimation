@@ -30,67 +30,65 @@ ORANGE = messages.perception.Orange
 class ConeMap():
     def __init__(self):
         # Hypre Params:
-        self.filter_freq = 2
-        self.real_cone_threshold = 50
+        self.filter_freq = 10
+        self.real_cone_threshold = 4
 
 
         # dynamic propertise:
-        self._cone_map = np.array( []   ,   dtype=Cone)
+        self._cone_samples = np.array( []   ,   dtype=Cone) #accumaltive ssamples before clusstering
+        self._real_cones   = np.array( []   ,   dtype=Cone) # real cones after clusttering
         self._call_counter = 0
 
 
     def insert_new_points(  self  , cone_array   ):
         self._call_counter = self._call_counter + 1 
-        for cone in cone_array:
-            self._cone_map = np.append( self._cone_map , cone )
+        self._cone_samples = np.append( self._cone_samples , cone_array )
 
+
+        # Not every insert causes filttering. 
+        # we need to get a certein amount of samples - denoted by self.filter_freq:
         if ( self._call_counter >=  self.filter_freq  ):
             print(f"ConeMap::Filtering cones.  _call_counter={self._call_counter}")
             self._call_counter = 0
             
-            yellow_cones , blue_cones , orange_cones = self.prepare_cones4cluster()
-            yellow_clust  = ClusteringOptics(yellow_cones)
-            blue_clust    = ClusteringOptics(blue_cones)
-            orange_clust  = ClusteringOptics(orange_cones)
+            yellow_cones , blue_cones , orange_cones = self.__prepare_cones4clusttering()
+            blue_clust    = ClusteringOptics(blue_cones  ,self.real_cone_threshold)
+            yellow_clust  = ClusteringOptics(yellow_cones,self.real_cone_threshold)
+            orange_clust  = ClusteringOptics(orange_cones,self.real_cone_threshold)
 
             #do svm here
 
-    def prepare_cones4cluster(self):
+    def __prepare_cones4clusttering(self):
         yellow_cones = np.array([])
         blue_cones   = np.array([])
         orange_cones = np.array([])
-        for cone in self._cone_map:
+        for cone in self._cone_samples:
             element = [cone.x , cone.y]
+
             if cone.type==YELLOW :
-                yellow_cones=np.append(yellow_cones, element)
+                if len(yellow_cones) == 0:
+                   yellow_cones=np.append(yellow_cones, element) 
+                else:
+                    yellow_cones=np.vstack((yellow_cones, element))
+
             if cone.type==BLUE :
-                blue_cones=np.append(blue_cones, element)
-            if cone.type==ORANGE :
-                orange_cones=np.append(orange_cones, element)
+                if len(blue_cones) == 0:
+                   blue_cones=np.append(blue_cones, element) 
+                else:
+                    blue_cones=np.vstack((blue_cones, element))
+
+            if cone.type==ORANGE:
+                if len(orange_cones) == 0:
+                   orange_cones=np.append(orange_cones, element) 
+                else:
+                    orange_cones=np.vstack((orange_cones, element))  
+
         return yellow_cones, blue_cones, orange_cones 
 
 
-        
-
-
-
-    def get_all_cones( self ):
-        return self._cone_map
-        '''
-        all_cones = np.array( [] , dtype=Cone)
-        for cone in self._cone_map:
-            temp_element = np.array( cone   ,   dtype=Cone)
-            all_cones = np.append( real_cones , temp_element )             
-        return all_cones
-        '''
+    def get_all_samples( self ):
+        return self._cone_samples
 
     def get_real_cones( self ):
-        real_cones = np.array( [] , dtype=Cone)
-        for cone in self._cone_map:
-            if cone.value > self.real_cone_threshold:
-                temp_element = np.array( cone   ,   dtype=Cone)
-                real_cones = np.append( real_cones , temp_element )
-        return real_cones
-
-
+        return self._real_cones
     

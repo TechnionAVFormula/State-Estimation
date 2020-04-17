@@ -8,7 +8,7 @@ import numpy as np
 # Generate sample data
 
 np.random.seed(0)
-n_points_per_cluster = 250
+n_points_per_cluster = 20
 
 C1 = [-5, -2] + .8 * np.random.randn(n_points_per_cluster, 2)
 C2 = [4, -1] + .1 * np.random.randn(n_points_per_cluster, 2)
