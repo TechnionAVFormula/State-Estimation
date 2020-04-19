@@ -18,12 +18,20 @@ current_dir_name = os.path.dirname(__file__)
 relative_dir_name = os.path.join(current_dir_name, '../SystemRunnerDebugger')
 sys.path.append(relative_dir_name)
 
-#Messages and Client stuff:
-from create_message_file import create_cone_message , create_gps_message , create_IMU_message
+#Making Messages:
+from create_message_file import make_IMUMeasurments , make_CarMeasurments
+from create_message_file import create_cone_message , create_gps_message , create_car_data_message  , create_ground_truth_message
+from create_message_file import NOT_AVAILABLE as SENSOR_NOT_AVAILABLE
+
+# Client for compiling the messages as though someone had sent it in Real-Life
 from pyFormulaClientNoNvidia import messages
 from pyFormulaClientNoNvidia.FormulaClient import FormulaClient, ClientSource, SYSTEM_RUNNER_IPC_PORT
 import os
 
+# Reverse X-Y Axes?
+# Simulation uses:  X-east   Y-north
+# State-Estimation uses the navigation concensus of xNorth yEast:
+IS_xNorth_yEast = True
 
 #enum:
 BLUE    = messages.perception.Blue
@@ -38,9 +46,30 @@ PATH2READ_SIMULATION_RESULTS_M = "C:\\Users\\NGBig\\Documents\\GitHub\\State-Est
 
 perception_sampling_time_milisec = (1/30) * 1000   # in [m sec]   for 30 Hz Fs
 
-'''
-Main:
-'''
+def flip_x_y( Cones , Measurements , Ground_Truth ):
+    
+    num = {}
+    num['tests']       = int(round(  oc.size(Cones.Time)[0][0]           )) 
+    num['left_cones']  = int(round(  oc.size(Cones.LeftConesSeen)[0][1]  ))
+    num['right_cones'] = int(round(  oc.size(Cones.RightConesSeen)[0][1] ))
+    
+    for test_ind in range(num['tests'] ):
+        for cone_ind in range(num['left_cones']):
+            old_x = Cones.LeftConesNoise[cone_ind][0][test_ind]
+            old_y = Cones.LeftConesNoise[cone_ind][1][test_ind]
+            Cones.LeftConesNoise[cone_ind][0][test_ind]=old_y
+            Cones.LeftConesNoise[cone_ind][1][test_ind]=old_x
+        for cone_ind in range(num['right_cones']):
+            old_x = Cones.RightConesNoise[cone_ind][0][test_ind]
+            old_y = Cones.RightConesNoise[cone_ind][1][test_ind]
+            Cones.RightConesNoise[cone_ind][0][test_ind]=old_y
+            Cones.RightConesNoise[cone_ind][1][test_ind]=old_x
+
+
+
+    return Cones , Measurements , Ground_Truth 
+
+
 def calc_perception_cone(cone_x , cone_y , car_x , car_y , car_theta):
     delta_x = cone_x - car_x
     delta_y = cone_y - car_y
@@ -92,6 +121,10 @@ def find_measurment_at_time( time_to_find_in_milisec , measurement_times):
     return ind , is_exist 
 
 
+'''
+Main:
+'''
+
 
 def main(output_file_name , input_mat_name):
 
@@ -110,6 +143,9 @@ def main(output_file_name , input_mat_name):
     Cones           = data.Cones
     Measurements    = data.Measurements
     Ground_Truth    = data.Ground_Truth
+
+    if IS_xNorth_yEast:
+        Cones , Measurements , Ground_Truth = flip_x_y( Cones , Measurements , Ground_Truth )
 
     #get length of data
     num = {}
@@ -148,6 +184,7 @@ def main(output_file_name , input_mat_name):
                     print(f"cone msg on index {test_ind}. num_cones={len( cone_arr )}")
                 #create message and send it (to file):
                 msg = create_cone_message(cone_arr)
+                msg.header.id = test_ind
                 msg.header.timestamp.FromMilliseconds( time_in_milisec )
                 simulation_conn.send_message(msg)
 
@@ -163,20 +200,74 @@ def main(output_file_name , input_mat_name):
                 print(f"GPS  msg on index {test_ind}. x={x} , y={y}")
             #create message and send it (to file):
             msg = create_gps_message(x,y,z)
+            msg.header.id = test_ind
             msg.header.timestamp.FromMilliseconds( time_in_milisec )
             simulation_conn.send_message(msg)
 
 
         '''
-        IMU Measurements:
+        CarData - CarMeasurments and IMUMeasurements:
         '''
-        imu_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.IMU_Time ) 
-        if is_exist:
-            # if PRINT_ON_MSG:
-            #     print(f"IMU  msg on index {test_ind}")
-            pass
+        imu_ind = test_ind
+        # get data:
+        a_lat  = Measurements.a_lat[ imu_ind][0]
+        a_long = Measurements.a_long[imu_ind][0]
+        delta  = Measurements.delta[ imu_ind][0]
+        omega  = Measurements.omega[ imu_ind][0]
+        # compile sensors data:
+        car_measurments = make_CarMeasurments(delta)
+        imu_measurments = make_IMUMeasurments( a_long , a_lat , omega , SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE   )
+        # compile entire message:
+        msg = create_car_data_message(car_measurments , imu_measurments )
+        msg.header.id = test_ind
+        msg.header.timestamp.FromMilliseconds( time_in_milisec )
+        simulation_conn.send_message(msg)
 
+
+        '''
+        Ground Truth:
+        '''
         
+        # Cones: 
+        '''
+        Fixe from cone noise to cone position!
+        '''
+        cone_array = []
+        for cone_ind in range(num['left_cones']):
+            x = Cones.LeftConesNoise[cone_ind][0][test_ind]
+            y = Cones.LeftConesNoise[cone_ind][1][test_ind]
+            cone = {
+                "cone_id": cone_ind,
+                "x": x,
+                "y": y,
+                "type": messages.perception.Blue
+            }
+            cone_array.append(cone)
+        for cone_ind in range(num['right_cones']):
+            x = Cones.RightConesNoise[cone_ind][0][test_ind]
+            y = Cones.RightConesNoise[cone_ind][1][test_ind]
+            cone = {
+                "cone_id": cone_ind,
+                "x": x,
+                "y": y,
+                "type": messages.perception.Yellow
+            }
+            cone_array.append(cone)
+
+        gt_ind = test_ind
+        # get data:
+        delta = Ground_Truth.delta[gt_ind][0]
+        theta = Ground_Truth.theta[gt_ind][0]
+        v     = Ground_Truth.v[gt_ind][0]
+        x     = Ground_Truth.x[gt_ind][0]
+        y     = Ground_Truth.y[gt_ind][0]
+        # compile sensors data::
+        car_position = [x , y]
+        car_measurments = make_CarMeasurments(delta)
+        imu_measurments = make_IMUMeasurments( SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE , theta , v  )
+        # compile entire message:
+        msg =  create_ground_truth_message( car_position , car_measurments , imu_measurments , cone_array)
+    
             
 
         

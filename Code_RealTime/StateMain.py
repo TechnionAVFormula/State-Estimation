@@ -1,4 +1,6 @@
+# Client :
 from SystemRunnerPart.StateEstClient import StateEstClient
+
 
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
@@ -60,6 +62,8 @@ class State:
             self._running_id = 1  
 
         self._ordered_cones = OrderedCones()
+
+        self._ground_truth = np.array([])
                   
         
 
@@ -164,9 +168,10 @@ class State:
         self._car_state.x = gps_data.position.x         
         self._car_state.y = gps_data.position.y
 
+    def process_ground_truth_message(self , gt_data):
+        pass
 
-
-    def process_imu_message(self , imu_data):
+    def process_car_data_message(self , imu_data):
         # Save Velocity:
         self._car_state.Vx = imu_data.velocity.x
         self._car_state.Vy = imu_data.velocity.y
@@ -251,7 +256,7 @@ class State:
                     if self.process_server_message(server_msg):
                         return
             except Exception as e:
-                print(e)
+                print(f"StateMain::Exception: {e}")
             
             ## GPS:
             try:
@@ -263,17 +268,17 @@ class State:
                 self.process_gps_message(gps_data)                
                 self.send_message2control(gps_msg) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
     
-            ## IMU:
+            ## car data::
             try:
-                imu_msg = self._client.get_imu_message(timeout=self._message_timeout)
-                imu_data = messages.sensors.IMUSensor()
-                imu_msg.data.Unpack(imu_data)
-                self.process_imu_message(imu_data)
-                self.send_message2control(imu_msg) 
+                car_data_msg = self._client.get_car_data_message(timeout=self._message_timeout)
+                car_data_data = messages.sensors.CarData()
+                car_data_msg.data.Unpack(car_data_data)
+                self.process_car_data_message(car_data_data)
+                self.send_message2control(car_data_data) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
 
             ## Perception:
             try:
@@ -282,12 +287,20 @@ class State:
                 cone_msg.data.Unpack(cone_map)  
                 if self.is_debug_mode:
                     print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
-                    if len(cone_map.cones) > 8:
-                        print("OMG SO MANY CONES!!!")
                 self.process_cones_message(cone_map)
                 self.send_message2control(cone_msg) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
+
+            ## Ground Truth:
+            try:
+                ground_truth_msg = self._client.get_ground_truth_message(time=self._message_timeout)
+                ground_truth_data = messages.ground_truth.GroundTruth()
+                ground_truth_msg.data.Unpack(ground_truth_data)
+                self.process_ground_truth_message(ground_truth_data)
+                #No need to send message2control
+            except Exception as e:
+                print(f"StateMain::Exception: {e}")
     # =============================================== Run: =============================================== #
             
     #end run(self)
