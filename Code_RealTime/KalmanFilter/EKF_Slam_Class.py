@@ -3,23 +3,74 @@ import math as ma
 from numpy.random import randn
 from numpy.linalg import inv, norm
 
+'''
+## import depanding on running state / configuration state:
+from ..config import CONFIG , ConfigEnum , IS_DEBUG_MODE
 
-class Kalman:
-    def __init__(self, GPS, Accelerometer, num):
-        self.Alpha = 100
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+'''
+
+
+class Kalman():
+    def __init__(self):
+        self.Alpha = 1000
         self.Time_Delta = 0.01
         self.Vehicle_Rear_Length = 0.7675
         self.Vehicle_Total_Length = 1.535
-        self.Number_of_Cones = num
+        self.Number_of_Cones = 0
+        if (CONFIG  == ConfigEnum.REAL_TIME):
+            # Real time covariance.
+            self.State_Correction = np.zeros([5 , 1])
+            self.Measure_GPS_Noise = np.diag([2, 2])
+            self.Measure_Acc_Noise = np.diag([0.1555, 0.1555, 0.22])
+            self.Motion_Noise = np.diag([3, 0 ** 2])
+            self.External_Measure_Noise = np.diag([3, 0.1])
+        elif ( CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+            # Test values:
+            self.State_Correction = np.zeros([5 , 1])
+            self.Covariance_Update = 0.01 * np.eye(len(self.State_Correction))
+            self.Motion_Noise = np.diag([3, 0 ** 2])
+            self.Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
+            self.Measure_GPS_Noise = np.diag([0.0025, 0.0025])
+            self.External_Measure_Noise = np.diag([3, 0.1])
+        '''
+        function [P,R,Q]  = initial_cov_mats()
+              %x    %y      %Vx  %Vy   %Theta
+R  =   [ [    2   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  2  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.1555     ,  0         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.1555         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0         , 0.22]   ]  ;
+        %measurement noise of x,y are currently sheker ve'cazav because I didn't find
+        %the error of the GPS
+        %theta measurement noise given in degrees
+        %I uesd the error given in the files plus the statistical measurment error
+Q  =   [ [    3   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  3  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.23     ,  0           , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.23        , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0           , 0.33]   ]  ;   
+        %same here for x,y. Nir please be proud of me 
+        %process noise calculated weighting the filter's update step and dynamic model
+        P =  [0.124536262397879              ,1.68586023371090e-07               ,0                                         ,0                                             ,-2.04133926343496e-08 ; ...
+                1.68586023371084e-07         ,0.124583808868131                    ,0                                          ,0                                              ,-0.00353120114306259 ;
+                 0                                            ,0                                                   ,0.118614066163451           ,0.0186140661634507             ,0                                     ; ...
+                 0                                            ,0                                                   ,0.0186140661634507         ,0.118614066163451               ,0                                     ; 
+                 -2.04133926343496e-08      ,-0.00353120114306259                ,0                                          ,0                                              ,2.65329138921966        ] ;
+ 
+end
+        '''
+
         self.Slip_angle = np.array([])
-        self.Motion_Noise = np.array([])
-        self.Measure_Acc_Noise = np.array([])
-        self.Measure_GPS_Noise = np.array([])
-        self.External_Measure_Noise = np.array([])
         self.State_Prediction = np.array([])
         self.Covariance_Prediction = np.array([])
-        self.Measure_GPS = GPS
-        self.Measure_Accelerometer = Accelerometer
+        self.Measure_GPS = np.array([])
+        self.Measure_Accelerometer = np.array([])
         self.External_Measure_Update = np.array([])
         self.State_Correction = np.array([])
         self.State_Update = np.array([])
@@ -27,7 +78,7 @@ class Kalman:
         self.Measure_GPS_Model = np.array([])
         self.Measure_Accelerometer_Model = np.array([])
         self.Control_Command = np.array([])
-        self.Addinig_State = np.array([])
+        self.Rotational_Speed = []
 
     @property
     def Measure_GPS(self):
@@ -48,41 +99,6 @@ class Kalman:
     @Number_of_Cones.setter
     def Number_of_Cones(self, num):
         self.__Number_of_Cones = num
-        if self.__Number_of_Cones == 1:
-            Observation = np.array(
-                [
-                    self.State_Prediction[0]
-                    + self.External_Measure_Update[0][0]
-                    * ma.cos(
-                        self.External_Measure_Update[0][1]
-                        + self.State_Prediction[4]
-                        + self.Slip_angle
-                    ),
-                    self.State_Prediction[1]
-                    + self.External_Measure_Update[0][0]
-                    * ma.sin(
-                        self.External_Measure_Update[0][1]
-                        + self.State_Prediction[4]
-                        + self.Slip_angle
-                    ),
-                ]
-            )
-            self.State_Prediction = np.concatenate(
-                [self.State_Correction, Observation],
-            )
-            self.Covariance_Prediction = np.block(
-                [
-                    [
-                        self.Covariance_Prediction,
-                        np.zeros([self.Covariance_Prediction.shape[0], 2]),
-                    ],
-                    [
-                        np.zeros([2, self.Covariance_Prediction.shape[0]]),
-                        0.01 * np.eye(2),
-                    ],
-                ],
-            )
-            print(self.Covariance_Prediction)
 
     @Measure_Accelerometer.setter
     def Measure_Accelerometer(self, Accelerometer):
@@ -97,12 +113,13 @@ class Kalman:
             self.Vehicle_Total_Length,
         )
         V_tot = norm(self.State_Correction[2:4])
-        DTheta = (
+        self.Rotational_Speed = (
             V_tot
             * ma.cos(self.Slip_angle)
             * ma.tan(self.Control_Command[1])
             / self.Vehicle_Total_Length
         )
+
         Movement = np.array(
             [
                 [
@@ -129,11 +146,12 @@ class Kalman:
                     * ma.sin(self.State_Correction[4] + self.Slip_angle)
                     * self.Control_Command[0]
                 ],
-                [self.Time_Delta * DTheta],
+                [self.Time_Delta * self.Rotational_Speed],
             ],
             dtype="float",
-        )
-        Movement = np.transpose(F) @ Movement
+        ).reshape([5, 1])
+
+        Movement = F.T @ Movement
         self.State_Prediction = self.State_Correction + Movement
         Partial_Jacobian = np.array(
             [
@@ -245,7 +263,7 @@ class Kalman:
                 ],
             ],
             dtype="float",
-        )
+        ).reshape([3, 1])
         Jacobian_Measure_Accelerometer_Model = np.array(
             [
                 [
@@ -287,15 +305,18 @@ class Kalman:
             dtype="float",
         )
         if self.Number_of_Cones > 0:
-            F = np.block([np.eye(7), np.zeros([7, 2 * (self.Number_of_Cones - 1)])])
+            F = np.block([np.eye(7), np.zeros([7, 2 * (self.Number_of_Cones - 1)])],)
         else:
             F = np.block([[np.eye(5)], [np.zeros([2, 5])]])
         Jacobian_Measure_Accelerometer_Model = Jacobian_Measure_Accelerometer_Model @ F
         S_Inv_Acc_Model = inv(
-            Jacobian_Measure_Accelerometer_Model
-            @ self.Covariance_Prediction
-            @ Jacobian_Measure_Accelerometer_Model.T
-            + self.Measure_Acc_Noise
+            np.array(
+                Jacobian_Measure_Accelerometer_Model
+                @ self.Covariance_Prediction
+                @ Jacobian_Measure_Accelerometer_Model.T
+                + self.Measure_Acc_Noise,
+                dtype="float",
+            )
         )
         Model_Gain_Acc = (
             self.Covariance_Prediction
@@ -306,7 +327,7 @@ class Kalman:
             self.Measure_Accelerometer - self.Measure_Accelerometer_Model
         )
         Covariance_Minimal = Model_Gain_Acc @ Jacobian_Measure_Accelerometer_Model
-        if self.Measure_GPS.shape[0] > 0:
+        if np.size(self.Measure_GPS) > 0:
             Jacobian_Measure_Gps_Model = np.array(
                 [[1, 0, 0, 0, 0, 0, 0], [0, 1, 0, 0, 0, 0, 0],], dtype="float",
             )
@@ -315,7 +336,7 @@ class Kalman:
                 Jacobian_Measure_Gps_Model
                 @ self.Covariance_Prediction
                 @ Jacobian_Measure_Gps_Model.T
-                + self.Measure_GPS_Noise
+                + self.Measure_GPS_Noise,
             )
             Model_Gain_GPS = (
                 self.Covariance_Prediction
@@ -328,27 +349,25 @@ class Kalman:
             Covariance_Minimal = (
                 Covariance_Minimal + Model_Gain_GPS @ Jacobian_Measure_Gps_Model
             )
-        if self.Number_of_Cones > 0:
+        if np.size(self.External_Measure_Update) > 0:
+            if self.Number_of_Cones == 0:
+                Covariance_Minimal = self.Cone_Initialization_function(
+                    Covariance_Minimal
+                )
             for Measure_Update in self.External_Measure_Update:
                 Measure_Update = np.reshape(Measure_Update, [2, 1])
-                Observation = np.array(
-                    [
-                        self.State_Prediction[0]
-                        + Measure_Update[0]
-                        * ma.cos(
-                            Measure_Update[1]
-                            + self.State_Prediction[4]
-                            + self.Slip_angle
-                        ),
-                        self.State_Prediction[1]
-                        + Measure_Update[0]
-                        * ma.sin(
-                            Measure_Update[1]
-                            + self.State_Prediction[4]
-                            + self.Slip_angle
-                        ),
-                    ]
-                )
+                Observation = [
+                    self.State_Prediction[0]
+                    + Measure_Update[0]
+                    * ma.cos(
+                        Measure_Update[1] + self.State_Prediction[4] + self.Slip_angle
+                    ),
+                    self.State_Prediction[1]
+                    + Measure_Update[0]
+                    * ma.sin(
+                        Measure_Update[1] + self.State_Prediction[4] + self.Slip_angle
+                    ),
+                ]
                 Pi_Threshold = 100000
                 for K in range(1, 2 * self.Number_of_Cones, 2):
                     Delta = np.array(
@@ -400,7 +419,7 @@ class Kalman:
                         @ np.transpose(External_Jacobian)
                         + self.External_Measure_Noise
                     )
-                    S_External = inv(S_External)
+                    S_External = inv(np.array(S_External, dtype="float"))
                     Pi = (
                         np.transpose(Measure_Update - Estimate_Measure)
                         @ S_External
@@ -463,3 +482,49 @@ class Kalman:
             self.Covariance_Update = (
                 np.eye(self.State_Correction.shape[0]) - Covariance_Minimal
             ) @ self.Covariance_Prediction
+
+    def Cone_Initialization_function(self, Covariance_Minimal):
+        self.External_Measure_Update = np.array(self.External_Measure_Update)
+        Observation = np.array(
+            [
+                self.State_Prediction[0]
+                + self.External_Measure_Update[0][0]
+                * ma.cos(
+                    self.External_Measure_Update[0][1]
+                    + self.State_Prediction[4]
+                    + self.Slip_angle
+                ),
+                self.State_Prediction[1]
+                + self.External_Measure_Update[0][0]
+                * ma.sin(
+                    self.External_Measure_Update[0][1]
+                    + self.State_Prediction[4]
+                    + self.Slip_angle
+                ),
+            ],
+            dtype="float",
+        )
+        self.State_Prediction = np.concatenate(
+            [self.State_Prediction, Observation.reshape([2, 1])]
+        )
+        self.State_Correction = np.concatenate(
+            [self.State_Correction, np.zeros([2, 1])]
+        )
+        self.Number_of_Cones = self.Number_of_Cones + 1
+        self.Covariance_Prediction = np.block(
+            [
+                [
+                    self.Covariance_Prediction,
+                    np.zeros([self.Covariance_Prediction.shape[0], 2]),
+                ],
+                [np.zeros([2, self.Covariance_Prediction.shape[1]]), 0.01 * np.eye(2),],
+            ]
+        )
+        self.External_Measure_Update = self.External_Measure_Update[1:, :]
+        Covariance_Minimal = np.block(
+            [
+                [Covariance_Minimal, np.zeros([Covariance_Minimal.shape[0], 2]),],
+                [np.zeros([2, Covariance_Minimal.shape[1]]), np.zeros([2, 2]),],
+            ]
+        )
+        return Covariance_Minimal

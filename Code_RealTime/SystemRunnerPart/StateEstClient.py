@@ -21,15 +21,18 @@ class StateEstClient(ModuleClient):
         self.server_messages = MessageDeque()                                              
         self.cones_map_messages = MessageDeque(maxlen=1)        
         self.gps_messages = MessageDeque(maxlen=1)        
-        self.imu_messages = MessageDeque(maxlen=1)        
+        self.car_data_messages = MessageDeque(maxlen=1)    
+        self.ground_truth_message = MessageDeque(maxlen=1)    
 
     def _callback(self, msg):  
         if msg.data.Is(messages.perception.ConeMap.DESCRIPTOR):
             self.cones_map_messages.put(msg)
         elif msg.data.Is(messages.sensors.GPSSensor.DESCRIPTOR):
             self.gps_messages.put(msg)
-        elif msg.data.Is(messages.sensors.IMUSensor.DESCRIPTOR):
-            self.imu_messages.put(msg)
+        elif msg.data.Is(messages.sensors.CarData.DESCRIPTOR):
+            self.car_data_messages.put(msg)
+        elif msg.data.Is(messages.ground_truth.GroundTruth.DESCRIPTOR)
+            self.ground_truth_message.put(msg)
         else:
             self.server_messages.put(msg)
 
@@ -39,8 +42,11 @@ class StateEstClient(ModuleClient):
     def get_gps_message(self, blocking=True, timeout=None):
         return self.gps_messages.get(blocking, timeout)
 
-    def get_imu_message(self, blocking=True, timeout=None):
-        return self.imu_messages.get(blocking, timeout)
+    def get_car_data_message(self, blocking=True, timeout=None):
+        return self.car_data_messages.get(blocking, timeout)
+
+    def get_ground_truth_message(self , blocking=true, timeout=None):
+        return self.ground_truth_message.get(blocking, timeout)
 
     def pop_server_message(self, blocking=False, timeout=None):
         return self.server_messages.get(blocking, timeout)

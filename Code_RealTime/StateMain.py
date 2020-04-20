@@ -1,11 +1,15 @@
+# Client :
 from SystemRunnerPart.StateEstClient import StateEstClient
+
 
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
 from class_defs.OrderedConesClass import OrderedCones
-from OrderCones.OrderConesMain    import orderCones
+from OrderCones.orderConesMain    import orderCones
 from class_defs.Cone import Cone
 from KalmanFilter.EKF_Slam_Class import Kalman
+from ConeMapping.ConeMapMain import ConeMap
+
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -17,6 +21,8 @@ elif ( CONFIG == ConfigEnum.LOCAL_TEST):
 else:
     raise NameError('User Should Choose Configuration from config.py')
 
+# for plotting maps:
+from tkinter import Tk, Canvas
 
 
 # for showing messages:
@@ -38,6 +44,7 @@ class State:
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
+        self.is_cone_clusttering = True
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
@@ -48,9 +55,16 @@ class State:
             self._kalman_filter = Kalman()
 
         #cone map:
-        self._cone_map =  np.array([] , dtype=Cone )
+        if self.is_cone_clusttering:
+            self._cone_map = ConeMap()
+        else:
+            self._cone_map =  np.array([] , dtype=Cone )
+            self._running_id = 1  
+
         self._ordered_cones = OrderedCones()
-        self._running_id = 1             
+
+        self._ground_truth = np.array([])
+                  
         
 
 
@@ -58,7 +72,7 @@ class State:
     def start(self):
         self._client.connect(1)
         if CONFIG == ConfigEnum.LOCAL_TEST:
-            self._client.set_read_delay(0.1)
+            self._client.set_read_delay(0.01)
         self._client.start()
 
     def stop(self):
@@ -129,13 +143,23 @@ class State:
 
 
     def process_cones_message(self, cone_map):     
+
+        if self.is_cone_clusttering:
+            temp_cone_arr = np.array([] , dtype=Cone)
         #Analize all cones for position in map and other basic elements: 
         for perception_cone in cone_map.cones:
             state_cone = self.cone_convert_perception2our_cone(perception_cone)
 
-            #if it's a new cone in our map, add it:
-            if (self.check_exist_cone(state_cone) == False ):
-                self.add_new_cone(state_cone)   
+            if self.is_cone_clusttering:
+                new_elem = np.array([state_cone] )
+                temp_cone_arr = np.append(temp_cone_arr , new_elem) 
+            else:
+                #if it's a new cone in our map, add it:
+                if (self.check_exist_cone(state_cone) == False ):
+                    self.add_new_cone(state_cone)  
+
+        if self.is_cone_clusttering:
+            self._cone_map.insert_new_points( temp_cone_arr )
         #Order Cones:
         self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
 		#ariela:now the cones are ordered
@@ -144,9 +168,10 @@ class State:
         self._car_state.x = gps_data.position.x         
         self._car_state.y = gps_data.position.y
 
+    def process_ground_truth_message(self , gt_data):
+        pass
 
-
-    def process_imu_message(self , imu_data):
+    def process_car_data_message(self , imu_data):
         # Save Velocity:
         self._car_state.Vx = imu_data.velocity.x
         self._car_state.Vy = imu_data.velocity.y
@@ -204,8 +229,6 @@ class State:
         # data.left_bound_cones  = self._ordered_cones.blue_cones
  
         return data
-    
-
 
     def send_message2control(self, msg_in):
         msg_id = msg_in.header.id
@@ -233,7 +256,7 @@ class State:
                     if self.process_server_message(server_msg):
                         return
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
             
             ## GPS:
             try:
@@ -245,17 +268,17 @@ class State:
                 self.process_gps_message(gps_data)                
                 self.send_message2control(gps_msg) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
     
-            ## IMU:
+            ## car data::
             try:
-                imu_msg = self._client.get_imu_message(timeout=self._message_timeout)
-                imu_data = messages.sensors.IMUSensor()
-                imu_msg.data.Unpack(imu_data)
-                self.process_imu_message(imu_data)
-                self.send_message2control(imu_msg) 
+                car_data_msg = self._client.get_car_data_message(timeout=self._message_timeout)
+                car_data_data = messages.sensors.CarData()
+                car_data_msg.data.Unpack(car_data_data)
+                self.process_car_data_message(car_data_data)
+                self.send_message2control(car_data_data) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
 
             ## Perception:
             try:
@@ -267,11 +290,23 @@ class State:
                 self.process_cones_message(cone_map)
                 self.send_message2control(cone_msg) 
             except Exception as e:
-                pass
+                print(f"StateMain::Exception: {e}")
+
+            ## Ground Truth:
+            try:
+                ground_truth_msg = self._client.get_ground_truth_message(time=self._message_timeout)
+                ground_truth_data = messages.ground_truth.GroundTruth()
+                ground_truth_msg.data.Unpack(ground_truth_data)
+                self.process_ground_truth_message(ground_truth_data)
+                #No need to send message2control
+            except Exception as e:
+                print(f"StateMain::Exception: {e}")
     # =============================================== Run: =============================================== #
             
     #end run(self)
-
+'''
+End of class
+'''
 
 state = State()
 

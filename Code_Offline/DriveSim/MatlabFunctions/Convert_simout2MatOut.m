@@ -1,3 +1,4 @@
+
 MatOut.Ground_Truth.Time=simout.Ground_Truth.x.Time;
 MatOut.Ground_Truth.x=simout.Ground_Truth.x.Data;
 MatOut.Ground_Truth.y=simout.Ground_Truth.y.Data;
@@ -21,3 +22,7 @@ MatOut.Cones.LeftConesNoise=simout.Cones.LeftConesNoise.Data;
 MatOut.Cones.RightConesNoise=simout.Cones.RightConesNoise.Data;
 MatOut.Cones.LeftConesSeen=simout.Cones.LeftConesSeen.Data;
 MatOut.Cones.RightConesSeen=simout.Cones.RightConesSeen.Data;
+
+
+save('simout' ,'MatOut');
+% save('simout' , "MatOut.Cones" , "MatOut.Measurements"  , "MatOut.Ground_Truth" )
