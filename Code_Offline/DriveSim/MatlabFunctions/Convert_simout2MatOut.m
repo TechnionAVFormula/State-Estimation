@@ -15,6 +15,8 @@ MatOut.Measurements.omega=simout.Measurements.omega.Data;
 MatOut.Measurements.delta=simout.Measurements.delta.Data;
 
 MatOut.Cones.Time=simout.Cones.LeftConesNoise.Time;
+MatOut.Cones.LeftConesReal=LeftCones;
+MatOut.Cones.RightConesReal=RightCones;
 MatOut.Cones.LeftConesNoise=simout.Cones.LeftConesNoise.Data;
 MatOut.Cones.RightConesNoise=simout.Cones.RightConesNoise.Data;
 MatOut.Cones.LeftConesSeen=simout.Cones.LeftConesSeen.Data;
