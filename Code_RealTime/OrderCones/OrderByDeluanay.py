@@ -24,7 +24,9 @@ else:
 # Get proper Enum:
 YELLOW = messages.perception.Yellow
 BLUE = messages.perception.Blue
-ORANGE = messages.perception.Orange
+ORANGE = messages.perception.OrangeBig
+ORANGE_SMALL = messages.perception.OrangeSmall
+
 FAKECONE = -10
 
 '''

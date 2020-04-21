@@ -17,9 +17,10 @@ Function takes orders cones by distance to car
 """
 
 # Get proper Enum:
-YELLOW = messages.perception.Yellow
-BLUE = messages.perception.Blue
-ORANGE = messages.perception.Orange
+YELLOW 		= messages.perception.Yellow
+BLUE   		= messages.perception.Blue
+ORANGE_BIG  = messages.perception.OrangeBig
+ORANGE_SMALL= messages.perception.OrangeSmall
 
 
 class OrderByDis:

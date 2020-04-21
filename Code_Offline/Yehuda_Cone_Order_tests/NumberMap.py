@@ -1,5 +1,14 @@
-from orderByDistance import *
-from OrderByDeluanay import *
+## for relative path
+from pathlib import Path
+import os 
+import sys
+current_dir_name = os.path.dirname(__file__)
+crnt_folder = Path(current_dir_name)
+main_folder = crnt_folder.parent.parent
+sys.path.append(str(main_folder))
+
+from Code_RealTime.OrderCones.OrderByDeluanay import *
+from Code_RealTime.OrderCones.OrderByDeluanay import *
 import tkinter as tk
 
 """

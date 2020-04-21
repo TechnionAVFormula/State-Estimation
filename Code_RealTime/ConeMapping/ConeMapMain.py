@@ -10,22 +10,26 @@ relative_dir_name = os.path.join(current_dir_name, '..')
 sys.path.append(relative_dir_name)
 
 from .ClusteringOptics import ClusteringOptics
-from class_defs.Cone import Cone
+# from class_defs.Cone import Cone
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
 
 if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
+    # from pyFormulaClient.messages.state_est import StateCone
 elif ( CONFIG == ConfigEnum.LOCAL_TEST):
     from pyFormulaClientNoNvidia import messages
+    # from pyFormulaClientNoNvidia.messages.state_est import StateCone
 else:
     raise NameError('User Should Choose Configuration from config.py')
 
+
 # Get proper Enum:
-YELLOW = messages.perception.Yellow
-BLUE = messages.perception.Blue
-ORANGE = messages.perception.Orange
+YELLOW      = messages.perception.Yellow
+BLUE        = messages.perception.Blue
+ORANGE_BIG  = messages.perception.OrangeBig
+ORANGE_SMALL= messages.perception.OrangeSmall
 
 class ConeMap():
     def __init__(self):
@@ -35,8 +39,8 @@ class ConeMap():
 
 
         # dynamic propertise:
-        self._cone_samples = np.array( []   ,   dtype=Cone) #accumaltive ssamples before clusstering
-        self._real_cones   = np.array( []   ,   dtype=Cone) # real cones after clusttering
+        self._cone_samples = np.array( [] ) #accumaltive ssamples before clusstering
+        self._real_cones   = np.array( [] ) # real cones after clusttering
         self._call_counter = 0
 
 
@@ -77,12 +81,14 @@ class ConeMap():
                 else:
                     blue_cones=np.vstack((blue_cones, element))
 
-            if cone.type==ORANGE:
+            if cone.type==ORANGE_BIG:
                 if len(orange_cones) == 0:
                    orange_cones=np.append(orange_cones, element) 
                 else:
                     orange_cones=np.vstack((orange_cones, element))  
 
+            '''!!! Add ORANGE_SMALL !!!'''
+            
         return yellow_cones, blue_cones, orange_cones 
 
 
@@ -91,4 +97,3 @@ class ConeMap():
 
     def get_real_cones( self ):
         return self._real_cones
-    

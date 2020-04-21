@@ -27,7 +27,6 @@ def create_gps_message(x,y,z):
     sensor_data.position.y = y
     sensor_data.position.z = z
     sensor_msg = messages.common.Message()
-    sensor_msg.header.id = 100
     sensor_msg.data.Pack(sensor_data) 
     return sensor_msg
 

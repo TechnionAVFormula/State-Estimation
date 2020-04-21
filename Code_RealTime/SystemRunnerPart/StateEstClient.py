@@ -18,11 +18,11 @@ class StateEstClient(ModuleClient):
             super().__init__(FormulaClient.ClientSource.STATE_EST)       
         elif ( CONFIG == ConfigEnum.LOCAL_TEST):
             super().__init__(FormulaClient.ClientSource.STATE_EST, IN_MESSAGE_FILE, OUT_MESSAGE_FILE)
-        self.server_messages = MessageDeque()                                              
+        self.server_messages    = MessageDeque()                                              
         self.cones_map_messages = MessageDeque(maxlen=1)        
-        self.gps_messages = MessageDeque(maxlen=1)        
-        self.car_data_messages = MessageDeque(maxlen=1)    
-        self.ground_truth_message = MessageDeque(maxlen=1)    
+        self.gps_messages       = MessageDeque(maxlen=1)        
+        self.car_data_messages  = MessageDeque(maxlen=1)    
+        self.ground_truth_message= MessageDeque(maxlen=1)    
 
     def _callback(self, msg):  
         if msg.data.Is(messages.perception.ConeMap.DESCRIPTOR):
@@ -31,7 +31,7 @@ class StateEstClient(ModuleClient):
             self.gps_messages.put(msg)
         elif msg.data.Is(messages.sensors.CarData.DESCRIPTOR):
             self.car_data_messages.put(msg)
-        elif msg.data.Is(messages.ground_truth.GroundTruth.DESCRIPTOR)
+        elif msg.data.Is(messages.ground_truth.GroundTruth.DESCRIPTOR):
             self.ground_truth_message.put(msg)
         else:
             self.server_messages.put(msg)
@@ -45,7 +45,7 @@ class StateEstClient(ModuleClient):
     def get_car_data_message(self, blocking=True, timeout=None):
         return self.car_data_messages.get(blocking, timeout)
 
-    def get_ground_truth_message(self , blocking=true, timeout=None):
+    def get_ground_truth_message(self , blocking=True, timeout=None):
         return self.ground_truth_message.get(blocking, timeout)
 
     def pop_server_message(self, blocking=False, timeout=None):

@@ -31,7 +31,7 @@ import os
 # Reverse X-Y Axes?
 # Simulation uses:  X-east   Y-north
 # State-Estimation uses the navigation concensus of xNorth yEast:
-IS_xNorth_yEast = True
+IS_xNorth_yEast = False
 
 #enum:
 BLUE    = messages.perception.Blue
@@ -41,18 +41,36 @@ YELLOW  = messages.perception.Yellow
 Values to be used:
 '''
 PRINT_ON_MSG = True
-INPUT_MAT_NAME =  'Test_01.mat'
+INPUT_MAT_NAME =  'Test_04.mat'
+OUT_FILE_NAME = 'fromSimulation.messages'
 PATH2READ_SIMULATION_RESULTS_M = "C:\\Users\\NGBig\\Documents\\GitHub\\State-Estimation\\Code_Offline\\SimulationTests\\read_simulation_results.m"
 
 perception_sampling_time_milisec = (1/30) * 1000   # in [m sec]   for 30 Hz Fs
 
 def flip_x_y( Cones , Measurements , Ground_Truth ):
     
+    print("convert_mat2messages: flipping X-Y coordinates")
+
     num = {}
     num['tests']       = int(round(  oc.size(Cones.Time)[0][0]           )) 
     num['left_cones']  = int(round(  oc.size(Cones.LeftConesSeen)[0][1]  ))
     num['right_cones'] = int(round(  oc.size(Cones.RightConesSeen)[0][1] ))
     
+
+    ## Real Comes:
+    for cone_ind in range(num['left_cones']):
+        old_x = Cones.LeftConesReal[cone_ind][0]
+        old_y = Cones.LeftConesReal[cone_ind][1]
+        Cones.LeftConesReal[cone_ind][0]=old_y
+        Cones.LeftConesReal[cone_ind][1]=old_x
+    for cone_ind in range(num['right_cones']):
+        old_x = Cones.RightConesReal[cone_ind][0]
+        old_y = Cones.RightConesReal[cone_ind][1]
+        Cones.RightConesReal[cone_ind][0]=old_y
+        Cones.RightConesReal[cone_ind][1]=old_x
+
+
+    ## Noised Comes:
     for test_ind in range(num['tests'] ):
         for cone_ind in range(num['left_cones']):
             old_x = Cones.LeftConesNoise[cone_ind][0][test_ind]
@@ -65,7 +83,21 @@ def flip_x_y( Cones , Measurements , Ground_Truth ):
             Cones.RightConesNoise[cone_ind][0][test_ind]=old_y
             Cones.RightConesNoise[cone_ind][1][test_ind]=old_x
 
+    ## Ground Truth:
+    for test_ind in range(num['tests'] ):
+        old_x       = Ground_Truth.x[test_ind][0]
+        old_y       = Ground_Truth.y[test_ind][0]
+        old_theta   = Ground_Truth.theta[test_ind][0]
+        Ground_Truth.x[test_ind][0]     = old_y     
+        Ground_Truth.y[test_ind][0]     = old_x     
+        Ground_Truth.theta[test_ind][0] = old_theta  # no change that I can think about 
 
+    ## GPS:
+    for test_ind in range(num['tests'] ):
+        old_x = Measurements.GPS_x[test_ind][0]
+        old_y = Measurements.GPS_y[test_ind][0]
+        Measurements.GPS_x[test_ind][0] = old_y 
+        Measurements.GPS_y[test_ind][0] = old_x
 
     return Cones , Measurements , Ground_Truth 
 
@@ -128,6 +160,7 @@ Main:
 
 def main(output_file_name , input_mat_name):
 
+    print(f"convert_mat2messages: starting converstion for file: {input_mat_name}")
 
     # Establish the client:
     perception_client = FormulaClient(ClientSource.PERCEPTION, 
@@ -181,7 +214,7 @@ def main(output_file_name , input_mat_name):
             # if there are cones, make a cone message:             
             if len( cone_arr ) > 0:
                 if PRINT_ON_MSG:
-                    print(f"cone msg on index {test_ind}. num_cones={len( cone_arr )}")
+                    print(f"cone msg on index {test_ind:5} ; num_cones={len( cone_arr ):4}")
                 #create message and send it (to file):
                 msg = create_cone_message(cone_arr)
                 msg.header.id = test_ind
@@ -197,7 +230,7 @@ def main(output_file_name , input_mat_name):
             y = Measurements.GPS_y[gps_ind][0]
             z = 0
             if PRINT_ON_MSG:
-                print(f"GPS  msg on index {test_ind}. x={x} , y={y}")
+                print(f"GPS  msg on index {test_ind:5} ; x={x:5.2f} , y={y:5.2f}")
             #create message and send it (to file):
             msg = create_gps_message(x,y,z)
             msg.header.id = test_ind
@@ -227,15 +260,10 @@ def main(output_file_name , input_mat_name):
         '''
         Ground Truth:
         '''
-        
-        # Cones: 
-        '''
-        Fixe from cone noise to cone position!
-        '''
         cone_array = []
         for cone_ind in range(num['left_cones']):
-            x = Cones.LeftConesNoise[cone_ind][0][test_ind]
-            y = Cones.LeftConesNoise[cone_ind][1][test_ind]
+            x = Cones.LeftConesReal[cone_ind][0]
+            y = Cones.LeftConesReal[cone_ind][1]
             cone = {
                 "cone_id": cone_ind,
                 "x": x,
@@ -244,8 +272,8 @@ def main(output_file_name , input_mat_name):
             }
             cone_array.append(cone)
         for cone_ind in range(num['right_cones']):
-            x = Cones.RightConesNoise[cone_ind][0][test_ind]
-            y = Cones.RightConesNoise[cone_ind][1][test_ind]
+            x = Cones.RightConesReal[cone_ind][0]
+            y = Cones.RightConesReal[cone_ind][1]
             cone = {
                 "cone_id": cone_ind,
                 "x": x,
@@ -267,9 +295,9 @@ def main(output_file_name , input_mat_name):
         imu_measurments = make_IMUMeasurments( SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE , theta , v  )
         # compile entire message:
         msg =  create_ground_truth_message( car_position , car_measurments , imu_measurments , cone_array)
-    
-            
-
+        msg.header.id = test_ind
+        msg.header.timestamp.FromMilliseconds( time_in_milisec )  
+        simulation_conn.send_message(msg)
         
     
 
@@ -282,17 +310,15 @@ def main(output_file_name , input_mat_name):
     exit_msg.data.Pack(exit_data)
     simulation_conn.send_message(exit_msg)
 
+    print("Done.")
+    print(f"File saved as {output_file_name}") 
+
 '''
 end main
 '''
 
 if __name__ == '__main__':
-    output_file_name = 'fromSimulation.messages'
-    main(output_file_name , INPUT_MAT_NAME )
-    print("Done.")
-    print(f"File saved as {output_file_name}")    
-
-
+    main(OUT_FILE_NAME , INPUT_MAT_NAME )   
 
 
 

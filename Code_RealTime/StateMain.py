@@ -4,25 +4,23 @@ from SystemRunnerPart.StateEstClient import StateEstClient
 
 # our class_defs and functions:
 from class_defs.StateEst_CarState import CarState
-from class_defs.OrderedConesClass import OrderedCones
 from OrderCones.orderConesMain    import orderCones
-from class_defs.Cone import Cone
+# from class_defs.Cone import Cone
 from KalmanFilter.EKF_Slam_Class import Kalman
 from ConeMapping.ConeMapMain import ConeMap
-
+from class_defs.StateEstCompPlot import CompPlot
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
 
 if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
+    from pyFormulaClient.MessageDeque import NoFormulaMessages
 elif ( CONFIG == ConfigEnum.LOCAL_TEST):
     from pyFormulaClientNoNvidia import messages
+    from pyFormulaClientNoNvidia.MessageDeque import NoFormulaMessages
 else:
     raise NameError('User Should Choose Configuration from config.py')
-
-# for plotting maps:
-from tkinter import Tk, Canvas
 
 
 # for showing messages:
@@ -45,6 +43,8 @@ class State:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
         self.is_cone_clusttering = True
+        self.is_compare2ground_truth = True
+        self.is_plot_state = True
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.01
@@ -58,15 +58,19 @@ class State:
         if self.is_cone_clusttering:
             self._cone_map = ConeMap()
         else:
-            self._cone_map =  np.array([] , dtype=Cone )
+            self._cone_map =  np.array([] )
             self._running_id = 1  
 
-        self._ordered_cones = OrderedCones()
+        self._ordered_cones = { "left" : np.array([] ) ,
+                                "right": np.array([] ) }
 
-        self._ground_truth = np.array([])
-                  
+        if self.is_compare2ground_truth:
+            self._ground_truth_memory = np.array([])
+            self._cone_truth = np.array([])
         
-
+        if self.is_plot_state:
+            self._comp_plot = CompPlot()
+            
 
 
     def start(self):
@@ -165,18 +169,62 @@ class State:
 		#ariela:now the cones are ordered
 
     def process_gps_message(self , gps_data):
-        self._car_state.x = gps_data.position.x         
-        self._car_state.y = gps_data.position.y
+        if self.is_kalman_filter:
+            pass
+        else:
+            self._car_state.x = gps_data.position.x         
+            self._car_state.y = gps_data.position.y
 
-    def process_ground_truth_message(self , gt_data):
-        pass
+    def process_ground_truth_message_memory(self , gt_msg):
+        #unpack data and time:
+        gt_data = messages.ground_truth.GroundTruth()
+        gt_msg.data.Unpack(gt_data)
+        time_in_milisec = gt_msg.header.timestamp.ToMilliseconds()
+        
+        #Process Car States:
+        car_turth = {}
+        car_turth["time_in_milisec"] = time_in_milisec
+        if gt_data.has_position_truth:
+            car_turth["x"] = gt_data.position.x
+            car_turth["y"] = gt_data.position.y
+        if gt_data.has_car_measurments_truth:
+            car_turth["delta"] = gt_data.car_measurments.steering_angle
+        if gt_data.has_imu_measurments_truth:
+            car_turth["speed"] = gt_data.imu_measurments.speed
+            car_turth["theta"] = gt_data.imu_measurments.orientation.z
 
-    def process_car_data_message(self , imu_data):
-        # Save Velocity:
-        self._car_state.Vx = imu_data.velocity.x
-        self._car_state.Vy = imu_data.velocity.y
-        # Save Orientation:
-        self._car_state.theta = imu_data.orientation.z
+        if (self._cone_truth.size == 0): #Check no cones
+            for cone in gt_data.cones:
+                tmp_cone = {"x": cone.position.x ,
+                            "y": cone.position.y ,
+                            "type" : cone.type   }
+                self._cone_truth = np.append(self._cone_truth , tmp_cone)
+            if self.is_plot_state:
+                self._comp_plot.plot_cones(self._cone_truth)
+
+        if self.is_compare2ground_truth:
+            self._ground_truth_memory = np.append( self._ground_truth_memory , car_turth )
+            
+
+        if self.is_plot_state:
+            self._comp_plot.update_car_state(car_turth)
+            
+        
+        
+            
+
+
+    def process_car_data_message(self , car_data):
+        delta = car_data.car_measurments.steering_angle
+        acc = car_data.imu_sensor.imu_measurments.acceleration.x
+        if self.is_kalman_filter:
+            pass
+        else:
+            # Save Velocity:
+            self._car_state.Vx = imu_data.velocity.x
+            self._car_state.Vy = imu_data.velocity.y
+            # Save Orientation:
+            self._car_state.theta = imu_data.orientation.z
 
         if self.is_debug_mode:
             print_proto_message(imu_data)
@@ -209,14 +257,14 @@ class State:
         data.current_state.position.y = self._car_state.y 
         data.current_state.velocity.x = self._car_state.Vx
         data.current_state.velocity.y = self._car_state.Vy
-        data.current_state.theta_absolute = self._car_state.theta
+        data.current_state.theta      = self._car_state.theta
         
         # finish estimation:
         data.distance_to_finish , is_found = self.calc_distance_to_finish()
-        if ( is_found ) and ( data.distance_to_finish < 0 ):
-            data.is_finished = True
-        else:
-            data.is_finished = False
+        # if ( is_found ) and ( data.distance_to_finish < 0 ):
+        #     data.is_finished = True
+        # else:
+        #     data.is_finished = False
 
         # Cones:    
         for cone in self._ordered_cones.yellow_cones:
@@ -244,6 +292,10 @@ class State:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
+    
+    def act_on_no_message(self , source_str):
+        if self.is_debug_mode:
+            print(f"No Message from {source_str}")
 
     # =============================================== Run: =============================================== #
     def run(self):
@@ -255,6 +307,8 @@ class State:
                 if server_msg is not None:
                     if self.process_server_message(server_msg):
                         return
+            except NoFormulaMessages:
+                self.act_on_no_message('server')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
             
@@ -266,7 +320,9 @@ class State:
                 if self.is_debug_mode :
                     print(f"got gps: x: {gps_data.position.x} y: {gps_data.position.y} z: {gps_data.position.z}")
                 self.process_gps_message(gps_data)                
-                self.send_message2control(gps_msg) 
+                self.send_message2control(gps_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message('GPS') 
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
     
@@ -276,7 +332,9 @@ class State:
                 car_data_data = messages.sensors.CarData()
                 car_data_msg.data.Unpack(car_data_data)
                 self.process_car_data_message(car_data_data)
-                self.send_message2control(car_data_data) 
+                self.send_message2control(car_data_data)
+            except NoFormulaMessages:
+                self.act_on_no_message('car data')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
 
@@ -288,17 +346,19 @@ class State:
                 if self.is_debug_mode:
                     print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
                 self.process_cones_message(cone_map)
-                self.send_message2control(cone_msg) 
+                self.send_message2control(cone_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message('cone map')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
 
             ## Ground Truth:
             try:
-                ground_truth_msg = self._client.get_ground_truth_message(time=self._message_timeout)
-                ground_truth_data = messages.ground_truth.GroundTruth()
-                ground_truth_msg.data.Unpack(ground_truth_data)
-                self.process_ground_truth_message(ground_truth_data)
+                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
+                self.process_ground_truth_message_memory(ground_truth_msg)
                 #No need to send message2control
+            except NoFormulaMessages:
+                self.act_on_no_message('ground truth')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
     # =============================================== Run: =============================================== #
@@ -309,6 +369,7 @@ End of class
 '''
 
 state = State()
+
 
 def stop_all_threads():
     print("Stopping threads")
