@@ -2,13 +2,12 @@
 from SystemRunnerPart.StateEstClient import StateEstClient
 
 
-# our class_defs and functions:
-from class_defs.StateEst_CarState import CarState
-from OrderCones.orderConesMain    import orderCones
-# from class_defs.Cone import Cone
-from KalmanFilter.EKF_Slam_Class import Kalman
-from ConeMapping.ConeMapMain import ConeMap
-from class_defs.StateEstCompPlot import CompPlot
+# Import our precious sub-functions and objects:
+from OrderCones.orderConesMain    import orderCones # for path planning
+from KalmanFilter.EKF_Slam_Class import Kalman      # For smart Localization using a kalman filter
+from ConeMapping.ConeMapMain import ConeMap         # for clusttering cones
+from class_defs.StateEstCompPlot import CompPlot    #for plotting 
+
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -44,21 +43,24 @@ class State:
         self.is_kalman_filter = False
         self.is_cone_clusttering = True
         self.is_compare2ground_truth = True
-        self.is_plot_state = True
+        self.is_plot_state = False # Reduces running speed sagnificantly when True
         #client:
         self._client = StateEstClient()
-        self._message_timeout = 0.01
-        #EKF:
-        self._car_state = CarState()
-
+        self._message_timeout = 0.0001
+        
+        
+        #Localization of car (Kalman Filter):
+        self._car_state = messages.state_est.CarState() # keeping our most recent known state here
         if self.is_kalman_filter:
+            self._last_kalman_time_milisec = 0
             self._kalman_filter = Kalman()
+            self._car_state_predicted = messages.state_est.CarState() # prediction only
 
         #cone map:
+        self._cone_map =  np.array([] )
         if self.is_cone_clusttering:
-            self._cone_map = ConeMap()
+            self._cone_mapping = ConeMap()
         else:
-            self._cone_map =  np.array([] )
             self._running_id = 1  
 
         self._ordered_cones = { "left" : np.array([] ) ,
@@ -84,27 +86,31 @@ class State:
             self._client.stop()
             self._client.join()
 
-    def cone_convert_perception2our_cone(self , perception_cone):
-        cone = Cone()
-        cone.type =  perception_cone.type
+    def cone_convert_perception2StateCone(self , perception_cone):
+        state_cone = messages.state_est.StateCone()
+        state_cone.type =  perception_cone.type
         #Here Theta and r are self coordinates. Meaning from the perspective of the car:
-        cone.r = math.sqrt(math.pow(perception_cone.x ,2) + math.pow( perception_cone.y ,2) )
+        state_cone.r = math.sqrt(math.pow(perception_cone.x ,2) + math.pow( perception_cone.y ,2) )
         #Normally, one will type  atan(y,x)...
         #but Perception looks at the world where x is positive towards the right side of the car, and y forward.
-        cone.theta =  math.atan2( perception_cone.y , perception_cone.x)
+        state_cone.alpha =  math.atan2( perception_cone.y , perception_cone.x)
         
         ## convert to our xNorth yEast:
-        theta_total = self._car_state.theta + cone.theta
+        theta_total = self._car_state.theta + state_cone.alpha   #! here we depand on _car_state being recent and relevant
         #distance of cone from car, in our axis
-        delta_x = cone.r*math.cos(theta_total)
-        delta_y = cone.r*math.sin(theta_total)
+        delta_x = state_cone.r*math.cos(theta_total)
+        delta_y = state_cone.r*math.sin(theta_total)
         #add distance to cars position
-        cone.x = self._car_state.x + delta_x
-        cone.y = self._car_state.y + delta_y
-        return cone
+        state_cone.position.x = self._car_state.position.x + delta_x
+        state_cone.position.y = self._car_state.position.y + delta_y
+        #We known nothing (John Snow) about the cone:
+        state_cone.position_deviation = math.inf
+        return state_cone
 
 
-    def cone_convert_state2msg(self , cone):
+    def cone_convert_from_ordered2state_cone(self , cone):
+        state_cone = cone
+        '''
         state_cone = messages.state_est.StateCone()
         # things that we already have:
         state_cone.type =  cone.type
@@ -119,7 +125,7 @@ class State:
         
         total_theta = math.atan2( delta_y , delta_x  ) 
         state_cone.theta =   total_theta - self._car_state.theta
-
+        '''
         return state_cone
 
 
@@ -146,37 +152,72 @@ class State:
         self._cone_map = np.append(self._cone_map , new_elem) 
 
 
-    def process_cones_message(self, cone_map):     
+    def process_cones_message(self, cone_msg):     
+        '''Parse Data and time'''
+        cone_map = messages.perception.ConeMap()
+        cone_msg.data.Unpack(cone_map)  
+        if self.is_debug_mode:
+            print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
+        ## Using cone clusttering and mapping code:
         if self.is_cone_clusttering:
-            temp_cone_arr = np.array([] , dtype=Cone)
-        #Analize all cones for position in map and other basic elements: 
-        for perception_cone in cone_map.cones:
-            state_cone = self.cone_convert_perception2our_cone(perception_cone)
+            temp_cone_arr = np.array([])
+             #Analize all cones for position in map and other basic elements: 
+            for perception_cone in cone_map.cones:
+                state_cone = self.cone_convert_perception2StateCone(perception_cone)
+                temp_cone_arr = np.append(temp_cone_arr , state_cone) 
+            self._cone_mapping.insert_new_points( temp_cone_arr )
+            # self._cone_map = self._cone_mapping.get_real_cones()
+            self._cone_map = self._cone_mapping.get_all_samples()
 
-            if self.is_cone_clusttering:
-                new_elem = np.array([state_cone] )
-                temp_cone_arr = np.append(temp_cone_arr , new_elem) 
-            else:
+        ## Using Simple code filtering with distance:
+        else:
+            for perception_cone in cone_map.cones:
+                state_cone = self.cone_convert_perception2StateCone(perception_cone)
                 #if it's a new cone in our map, add it:
                 if (self.check_exist_cone(state_cone) == False ):
-                    self.add_new_cone(state_cone)  
+                    self.add_new_cone(state_cone) 
 
-        if self.is_cone_clusttering:
-            self._cone_map.insert_new_points( temp_cone_arr )
-        #Order Cones:
-        self._ordered_cones.blue_cones , self._ordered_cones.yellow_cones = orderCones( self._cone_map , self._car_state ) 
-		#ariela:now the cones are ordered
+        ## Order Cones:
+        self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones( self._cone_map , self._car_state ) 
 
-    def process_gps_message(self , gps_data):
+
+
+    def kalman_predict(self , data_for_prediction):
+        self._kalman_filter.State_Prediction(data_for_prediction)
+        self._car_state_predicted = self._kalman_filter.Get_Current_State()
+
+    def kalman_correct(self , data_for_correction):
+        self._kalman_filter.State_Correction(data_for_correction)
+        self._car_state = self._kalman_filter.Get_Current_State()
+
+    
+
+    def process_gps_message(self , gps_msg):
+        '''unpack data and time:'''
+        gps_data = messages.sensors.GPSSensor()
+        gps_msg.data.Unpack(gps_data)
+        x = gps_data.position.x
+        y = gps_data.position.y
+        z = gps_data.position.z
+        time_in_milisec = gps_msg.header.timestamp.ToMilliseconds()
+
+        '''Process:'''
+        data_for_correction = {"x": x , "y":y}
+
+        if self.is_debug_mode :
+            print(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
+
         if self.is_kalman_filter:
-            pass
+            self.kalman_correct(data_for_correction)
         else:
-            self._car_state.x = gps_data.position.x         
-            self._car_state.y = gps_data.position.y
+            self._car_state.position.x = x    
+            self._car_state.position.y = y
+
+
 
     def process_ground_truth_message_memory(self , gt_msg):
-        #unpack data and time:
+        '''unpack data and time:'''
         gt_data = messages.ground_truth.GroundTruth()
         gt_msg.data.Unpack(gt_data)
         time_in_milisec = gt_msg.header.timestamp.ToMilliseconds()
@@ -210,24 +251,40 @@ class State:
             self._comp_plot.update_car_state(car_turth)
             
         
-        
-            
 
+    def process_car_data_message(self , car_data_msg):
+        #unpack data and time:
+        car_data = messages.sensors.CarData()
+        car_data_msg.data.Unpack(car_data)
+        time_in_milisec = car_data_msg.header.timestamp.ToMilliseconds()
 
-    def process_car_data_message(self , car_data):
-        delta = car_data.car_measurments.steering_angle
-        acc = car_data.imu_sensor.imu_measurments.acceleration.x
-        if self.is_kalman_filter:
-            pass
+        #process:
+        delta = car_data.car_measurments.steering_angle  #steering angle
+        acceleration_long = car_data.imu_sensor.imu_measurments.acceleration.x
+        acceleration_lat  = car_data.imu_sensor.imu_measurments.acceleration.y
+        #some times this data exists:
+        Vx = car_data.imu_sensor.imu_measurments.velocity.x
+        Vy = car_data.imu_sensor.imu_measurments.velocity.y
+        theta = car_data.imu_sensor.imu_measurments.orientation.z
+
+        if self.is_kalman_filter:            
+            #calc time since last prediction and update new time:
+            delta_t_milisec = time_in_milisec - self._last_kalman_time_milisec
+            self._last_kalman_time_milisec = time_in_milisec
+
+            data_for_prediction = { "delta": delta ,  
+                                    "delta_t_milisec":delta_t_milisec ,
+                                    "acceleration_long":acceleration_long , 
+                                    "acceleration_lat":acceleration_lat    }
+            self.kalman_predict(data_for_prediction)
         else:
             # Save Velocity:
-            self._car_state.Vx = imu_data.velocity.x
-            self._car_state.Vy = imu_data.velocity.y
+            self._car_state.velocity.x = Vx
+            self._car_state.velocity.y = Vy
             # Save Orientation:
-            self._car_state.theta = imu_data.orientation.z
+            self._car_state.theta = theta
 
-        if self.is_debug_mode:
-            print_proto_message(imu_data)
+
 
     def process_server_message(self, server_messages):
         if server_messages.data.Is(messages.server.ExitMessage.DESCRIPTOR):
@@ -236,7 +293,8 @@ class State:
         return False
     
     def calc_distance_to_finish(self):
-        if len(self._ordered_cones.orange_cones) == 0 : #not seen any orange cones yet
+        # if len(self._ordered_cones.orange_cones) == 0 : #not seen any orange cones yet
+        if True:
             dist = -1
             is_found = False
         else:
@@ -245,59 +303,61 @@ class State:
         return dist , is_found    
 
     
-    def formula_state_msg(self):
+    def create_formula_state_msg(self):
         # Makes a data object according to the formula msg proto "FormulaState"
         # With the updated state         
         
-        #create an empty message:
+        #create an empty message of state_est data:
         data = messages.state_est.FormulaState()
         
         # Car's position:
-        data.current_state.position.x = self._car_state.x 
-        data.current_state.position.y = self._car_state.y 
-        data.current_state.velocity.x = self._car_state.Vx
-        data.current_state.velocity.y = self._car_state.Vy
+        data.current_state.position.x = self._car_state.position.x 
+        data.current_state.position.y = self._car_state.position.y 
+        data.current_state.velocity.x = self._car_state.velocity.x
+        data.current_state.velocity.y = self._car_state.velocity.y
         data.current_state.theta      = self._car_state.theta
         
         # finish estimation:
         data.distance_to_finish , is_found = self.calc_distance_to_finish()
-        # if ( is_found ) and ( data.distance_to_finish < 0 ):
-        #     data.is_finished = True
-        # else:
-        #     data.is_finished = False
 
         # Cones:    
-        for cone in self._ordered_cones.yellow_cones:
-            state_cone = self.cone_convert_state2msg(cone)
+        for cone in self._ordered_cones['right']:
+            state_cone = self.cone_convert_from_ordered2state_cone(cone)
             data.right_bound_cones.append(state_cone)    
-        for cone in self._ordered_cones.blue_cones:
-            state_cone = self.cone_convert_state2msg(cone)
+        for cone in self._ordered_cones['left']:
+            state_cone = self.cone_convert_from_ordered2state_cone(cone)
             data.left_bound_cones.append(state_cone)
-        # data.right_bound_cones = self._ordered_cones.yellow_cones
-        # data.left_bound_cones  = self._ordered_cones.blue_cones
- 
+
+        ''' Missing road estimation:'''
+        # distance_from_left  #= 6;
+        # distance_from_right #= 7;	
+        # road_angle          #= 8; // direction of road . absolute in the coordinate system of xNorth yEast 
+
         return data
 
     def send_message2control(self, msg_in):
-        msg_id = msg_in.header.id
+        # make an empty message:
+        msg_id  = msg_in.header.id
         msg_out = messages.common.Message()
         msg_out.header.id = msg_id
 
-        # Make the message:
-        data = self.formula_state_msg()
+        # summarize all the data:
+        data = self.create_formula_state_msg()
 
+        # print message for debugging:
         if self.is_debug_mode:
             print_proto_message(data)
 
+        # send message:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
     
     def act_on_no_message(self , source_str):
         if self.is_debug_mode:
-            print(f"No Message from {source_str}")
+            print(f"No {source_str:10} message")
 
-    # =============================================== Run: =============================================== #
+    # V===============================================V Run: V===============================================V #
     def run(self):
         while True:
 
@@ -315,11 +375,7 @@ class State:
             ## GPS:
             try:
                 gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
-                gps_data = messages.sensors.GPSSensor()
-                gps_msg.data.Unpack(gps_data)
-                if self.is_debug_mode :
-                    print(f"got gps: x: {gps_data.position.x} y: {gps_data.position.y} z: {gps_data.position.z}")
-                self.process_gps_message(gps_data)                
+                self.process_gps_message(gps_msg)                
                 self.send_message2control(gps_msg)
             except NoFormulaMessages:
                 self.act_on_no_message('GPS') 
@@ -328,11 +384,9 @@ class State:
     
             ## car data::
             try:
-                car_data_msg = self._client.get_car_data_message(timeout=self._message_timeout)
-                car_data_data = messages.sensors.CarData()
-                car_data_msg.data.Unpack(car_data_data)
-                self.process_car_data_message(car_data_data)
-                self.send_message2control(car_data_data)
+                car_data_msg = self._client.get_car_data_message(timeout=self._message_timeout)                
+                self.process_car_data_message(car_data_msg)
+                self.send_message2control(car_data_msg)
             except NoFormulaMessages:
                 self.act_on_no_message('car data')
             except Exception as e:
@@ -341,11 +395,7 @@ class State:
             ## Perception:
             try:
                 cone_msg = self._client.get_cone_message(timeout=self._message_timeout)                   
-                cone_map = messages.perception.ConeMap()
-                cone_msg.data.Unpack(cone_map)  
-                if self.is_debug_mode:
-                    print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
-                self.process_cones_message(cone_map)
+                self.process_cones_message(cone_msg)
                 self.send_message2control(cone_msg)
             except NoFormulaMessages:
                 self.act_on_no_message('cone map')
@@ -361,7 +411,7 @@ class State:
                 self.act_on_no_message('ground truth')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
-    # =============================================== Run: =============================================== #
+    # ^===============================================^ Run: ^===============================================^ #
             
     #end run(self)
 '''

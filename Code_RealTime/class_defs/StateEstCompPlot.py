@@ -1,6 +1,6 @@
 from matplotlib import pyplot as plt
 import math
-
+import numpy as np
 
 ## for relative path
 import os 
@@ -38,9 +38,12 @@ class CompPlot():
     def __init__(self):
         self.fig , self.ax = plt.subplots()
         self._intialize_figure()
-        self._refresh_timer = 0.01
+        self._refresh_timer = 0.00001
+        self._trace_epsilon = 3
         self._car_icon = None
         self._car_arrow = None
+        self._car_trace = np.array([])
+
         self.refresh()
         
 
@@ -81,11 +84,22 @@ class CompPlot():
             if y < min_y:
                 min_y = y
         
-        delta = 20
+        delta = 10
         self.ax.set_xlim(min_x - delta , max_x + delta)
         self.ax.set_ylim(min_y - delta , max_y + delta)
         self.refresh()
     
+
+    def check_exist_in_trace(self , x_new, y_new):
+        clear_radius_sqrd = self._trace_epsilon**2
+        for position in self._car_trace:
+            x_exist = position["x"]
+            y_exist = position["y"] 
+            distance_sqrd = (x_exist - x_new)**2 +  (y_exist - y_new)**2
+            if distance_sqrd < clear_radius_sqrd:
+                return True 
+        return False    
+
     def update_car_state(self , car_turth):
         x = car_turth["x"]
         y = car_turth["y"]
@@ -97,7 +111,10 @@ class CompPlot():
 
 
         #Plot car trace:
-        plt.scatter(x,y , c='black' , alpha=0.3 , marker='.')
+        if not self.check_exist_in_trace(x,y) :
+            plt.scatter(x,y , c='black' , alpha=0.3 , marker='.')
+            position = {"x": x , "y": y}
+            self._car_trace = np.append( self._car_trace , position  )
 
         #Plot car icon:
         if self._car_icon == None:  #create:

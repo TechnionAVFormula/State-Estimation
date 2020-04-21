@@ -45,15 +45,15 @@ def orderByDeluanay(Cones, CarState):
 	nCones = len(Cones)
 	coneTemplate = copy.deepcopy(Cones[0])
 	numCones = np.empty([len(Cones), 4])
-	numCar = [CarState.x,CarState.y]
-	numVel = [CarState.Vx,CarState.Vy]
+	numCar = [CarState.position.x ,CarState.position.y]
+	numVel = [CarState.velocity.x ,CarState.velocity.y]
 	for i in range(nCones):
 		color = 0
 		if Cones[i].type == YELLOW:
-			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 121
+			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].position.x, Cones[i].position.y, 121
 			numCones[i][3] = i
 		elif Cones[i].type == BLUE:
-			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].x, Cones[i].y, 98
+			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].position.x, Cones[i].position.y, 98
 			numCones[i][3] = i
 	
 	mt = MapTrack(numCones, numCar, numVel)

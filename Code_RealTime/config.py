@@ -17,4 +17,4 @@ IN_MESSAGE_FILE = 'Messages/fromSimulation.messages'   #messages from "driveSim"
 OUT_MESSAGE_FILE = 'Messages/state.messages'
 
 ## Choose if to print in debug mode:
-IS_DEBUG_MODE = False
+IS_DEBUG_MODE = True
