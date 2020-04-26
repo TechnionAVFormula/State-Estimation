@@ -7,7 +7,7 @@ from OrderCones.orderConesMain    import orderCones # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman      # For smart Localization using a kalman filter
 from ConeMapping.ConeMapMain import ConeMap         # for clusttering cones
 from class_defs.StateEstCompPlot import CompPlot    #for plotting 
-
+from SystemRunnerPart.StateEst_Dash import  plotly_state
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -41,14 +41,22 @@ class StateMessage(Enum):
     PREDICTION_MSG = auto()
     CORRECTION_MSG = auto()
 
+YELLOW       = messages.perception.Yellow
+BLUE         = messages.perception.Blue
+ORANGE_BIG   = messages.perception.OrangeBig
+ORANGE_SMALL = messages.perception.OrangeSmall
+
 class State:
     def __init__(self):
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
-        self.is_cone_clusttering = True
+        self.is_cone_clusttering = False
         self.is_compare2ground_truth = True
-        self.is_plot_state = True # Reduces running speed sagnificantly when True
+        self.is_order_cones = False
+        self.is_matplotlib = False # Reduces running speed sagnificantly when True
+        self.is_plotly = True
+
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
@@ -75,7 +83,8 @@ class State:
             self._ground_truth_memory = np.array([])
             self._cone_truth = np.array([])
 
-        if self.is_plot_state:
+        if self.is_matplotlib:
+
             self._comp_plot = CompPlot()
 
 
@@ -136,12 +145,12 @@ class State:
 
     def check_exist_cone(self, new_cone):
         epsilon = 1 # 1 meter of error around cone
-        x_new = new_cone.x
-        y_new = new_cone.y
+        x_new = new_cone.position.x
+        y_new = new_cone.position.y
 
         for old_cone in self._cone_map:
-            x_old = old_cone.x
-            y_old = old_cone.y
+            x_old = old_cone.position.x
+            y_old = old_cone.position.y
             seperation =  math.sqrt(math.pow(   x_new - x_old  ,2) + math.pow(    y_new - y_old   ,2) )
             if seperation < epsilon:
                 return True #exist
@@ -166,6 +175,8 @@ class State:
 
         if self.is_debug_mode:
             cluster_start = timer()
+
+        
 
         ## Using cone clusttering and mapping code:
         if self.is_cone_clusttering:
@@ -193,7 +204,8 @@ class State:
             order_start = timer()
 
         ## Order Cones:
-        self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones( self._cone_map , self._car_state ) 
+        if self.is_order_cones:
+            self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones( self._cone_map , self._car_state ) 
 
         if self.is_debug_mode:
             print(f"ordering took {timer() - order_start} ms")
@@ -227,7 +239,7 @@ class State:
         if self.is_kalman_filter:
             self.kalman_correct(data_for_correction)
         else:
-            self._car_state.position.x = x    
+            self._car_state.position.x = x 
             self._car_state.position.y = y
 
 
@@ -256,14 +268,15 @@ class State:
                             "y": cone.position.y ,
                             "type" : cone.type   }
                 self._cone_truth = np.append(self._cone_truth , tmp_cone)
-            if self.is_plot_state:
+            if self.is_matplotlib:
+
                 self._comp_plot.plot_cones(self._cone_truth)
 
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.append( self._ground_truth_memory , car_turth )
 
 
-        if self.is_plot_state:
+        if self.is_matplotlib:
             self._comp_plot.update_car_state(car_turth)
 
 
@@ -339,12 +352,19 @@ class State:
         data.distance_to_finish , is_found = self.calc_distance_to_finish()
 
         # Cones:    
-        for cone in self._ordered_cones['right']:
-            state_cone = self.cone_convert_from_ordered2state_cone(cone)
-            data.right_bound_cones.append(state_cone)    
-        for cone in self._ordered_cones['left']:
-            state_cone = self.cone_convert_from_ordered2state_cone(cone)
-            data.left_bound_cones.append(state_cone)
+        if self.is_order_cones:
+            for cone in self._ordered_cones['right']:
+                state_cone = self.cone_convert_from_ordered2state_cone(cone)
+                data.right_bound_cones.append(state_cone)    
+            for cone in self._ordered_cones['left']:
+                state_cone = self.cone_convert_from_ordered2state_cone(cone)
+                data.left_bound_cones.append(state_cone)
+        else:
+            for state_cone in self._cone_map:
+                if state_cone.type == YELLOW:
+                    data.right_bound_cones.append(state_cone)
+                if state_cone.type == BLUE:
+                    data.left_bound_cones.append(state_cone)
 
         ''' Missing road estimation:'''
         # distance_from_left  #= 6;
@@ -370,7 +390,11 @@ class State:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
-    
+        ## send data to dash-board
+        if self.is_plotly:
+            plotly_state(data)
+
+
     def act_on_no_message(self , source_str):
         if self.is_debug_mode:
             print(f"No {source_str:10} message")
@@ -463,6 +487,8 @@ def main():
 
     stop_all_threads()
     exit(0)
+
+
 
 
 

@@ -20,10 +20,10 @@ def orderCones(coneMap, carState  ):
     orderClass = OrderByDis(coneMap , carState)
     bluePoints , yellowPoints = orderClass.orderByDis()
 	'''
-	
+
 	#to order cones by delaunay
 	bluePoints , yellowPoints , blueLost ,yellowLost = orderByDeluanay(coneMap, carState)
-	
+
 	return bluePoints  ,yellowPoints
 	
 def printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState):
