@@ -1,5 +1,15 @@
-from .OrderByDistance import OrderByDis
-from .OrderByDeluanay import orderByDeluanay
+
+## For relative path:
+import sys
+import os
+from pathlib import Path
+current_path  = os.path.dirname(__file__)
+current_path  = Path(current_path)
+relative_path = current_path.parent
+sys.path.append(str(relative_path))
+
+from OrderCones.orderByDistance import OrderByDis
+from OrderCones.OrderByDeluanay import orderByDeluanay
 import tkinter as tk
 
 

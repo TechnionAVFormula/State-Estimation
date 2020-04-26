@@ -164,6 +164,9 @@ class State:
         if self.is_debug_mode:
             print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
+        if self.is_debug_mode:
+            cluster_start = timer()
+
         ## Using cone clusttering and mapping code:
         if self.is_cone_clusttering:
             temp_cone_arr = np.array([])
@@ -182,10 +185,18 @@ class State:
                 #if it's a new cone in our map, add it:
                 if (self.check_exist_cone(state_cone) == False ):
                     self.add_new_cone(state_cone) 
+        
+        if self.is_debug_mode:
+            print(f"clustering took {timer() - cluster_start} ms")
+
+        if self.is_debug_mode:
+            order_start = timer()
 
         ## Order Cones:
         self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones( self._cone_map , self._car_state ) 
 
+        if self.is_debug_mode:
+            print(f"ordering took {timer() - order_start} ms")
 
 
     def kalman_predict(self , data_for_prediction):
