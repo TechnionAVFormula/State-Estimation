@@ -35,6 +35,11 @@ import time
 import signal
 import numpy as np
 
+from enum import Enum, auto
+class StateMessage(Enum):
+    NO_MESSAGE = auto()
+    PREDICTION_MSG = auto()
+    CORRECTION_MSG = auto()
 
 class State:
     def __init__(self):
@@ -47,8 +52,8 @@ class State:
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
-        
-        
+
+
         #Localization of car (Kalman Filter):
         self._car_state = messages.state_est.CarState() # keeping our most recent known state here
         if self.is_kalman_filter:
@@ -61,7 +66,7 @@ class State:
         if self.is_cone_clusttering:
             self._cone_mapping = ConeMap()
         else:
-            self._running_id = 1  
+            self._running_id = 1
 
         self._ordered_cones = { "left" : np.array([] ) ,
                                 "right": np.array([] ) }
@@ -69,10 +74,10 @@ class State:
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.array([])
             self._cone_truth = np.array([])
-        
+
         if self.is_plot_state:
             self._comp_plot = CompPlot()
-            
+
 
 
     def start(self):
@@ -94,7 +99,7 @@ class State:
         #Normally, one will type  atan(y,x)...
         #but Perception looks at the world where x is positive towards the right side of the car, and y forward.
         state_cone.alpha =  math.atan2( perception_cone.y , perception_cone.x)
-        
+
         ## convert to our xNorth yEast:
         theta_total = self._car_state.theta + state_cone.alpha   #! here we depand on _car_state being recent and relevant
         #distance of cone from car, in our axis
@@ -122,8 +127,8 @@ class State:
         delta_x = cone.x - self._car_state.x
         delta_y = cone.y - self._car_state.y
         state_cone.r = math.sqrt(math.pow(  delta_x ,2) + math.pow( delta_y ,2) )
-        
-        total_theta = math.atan2( delta_y , delta_x  ) 
+
+        total_theta = math.atan2( delta_y , delta_x  )
         state_cone.theta =   total_theta - self._car_state.theta
         '''
         return state_cone
@@ -137,11 +142,11 @@ class State:
         for old_cone in self._cone_map:
             x_old = old_cone.x
             y_old = old_cone.y
-            seperation =  math.sqrt(math.pow(   x_new - x_old  ,2) + math.pow(    y_new - y_old   ,2) )       
+            seperation =  math.sqrt(math.pow(   x_new - x_old  ,2) + math.pow(    y_new - y_old   ,2) )
             if seperation < epsilon:
                 return True #exist
-        #if we came here, no existing cone match one of the existing cones                
-        return False #not exist        
+        #if we came here, no existing cone match one of the existing cones
+        return False #not exist
 
 
     def add_new_cone(self , state_cone):
@@ -149,13 +154,13 @@ class State:
         self._running_id += 1  # just a mock, later we need to indentify cones that already exist in our map.
         # Add cone to array:
         new_elem = np.array([state_cone] )
-        self._cone_map = np.append(self._cone_map , new_elem) 
+        self._cone_map = np.append(self._cone_map , new_elem)
 
 
-    def process_cones_message(self, cone_msg):     
+    def process_cones_message(self, cone_msg):
         '''Parse Data and time'''
         cone_map = messages.perception.ConeMap()
-        cone_msg.data.Unpack(cone_map)  
+        cone_msg.data.Unpack(cone_map)
         if self.is_debug_mode:
             print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
@@ -245,18 +250,23 @@ class State:
 
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.append( self._ground_truth_memory , car_turth )
-            
+
 
         if self.is_plot_state:
             self._comp_plot.update_car_state(car_turth)
-            
-        
+
 
     def process_car_data_message(self , car_data_msg):
         #unpack data and time:
         car_data = messages.sensors.CarData()
         car_data_msg.data.Unpack(car_data)
         time_in_milisec = car_data_msg.header.timestamp.ToMilliseconds()
+
+        ## Assert that frequency of update is correct:
+        delta_t_milisec = time_in_milisec - self._last_kalman_time_milisec  #calc time since last prediction and update new time:
+        if not self.check_correct_frequency():
+            return 
+        self._last_kalman_time_milisec = time_in_milisec
 
         #process:
         delta = car_data.car_measurments.steering_angle  #steering angle
@@ -267,14 +277,11 @@ class State:
         Vy = car_data.imu_sensor.imu_measurments.velocity.y
         theta = car_data.imu_sensor.imu_measurments.orientation.z
 
-        if self.is_kalman_filter:            
-            #calc time since last prediction and update new time:
-            delta_t_milisec = time_in_milisec - self._last_kalman_time_milisec
-            self._last_kalman_time_milisec = time_in_milisec
+        if self.is_kalman_filter:
 
-            data_for_prediction = { "delta": delta ,  
+            data_for_prediction = { "delta": delta ,
                                     "delta_t_milisec":delta_t_milisec ,
-                                    "acceleration_long":acceleration_long , 
+                                    "acceleration_long":acceleration_long ,
                                     "acceleration_lat":acceleration_lat    }
             self.kalman_predict(data_for_prediction)
         else:
@@ -371,17 +378,17 @@ class State:
                 self.act_on_no_message('server')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
-            
+
             ## GPS:
             try:
                 gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
-                self.process_gps_message(gps_msg)                
+                self.process_gps_message(gps_msg)
                 self.send_message2control(gps_msg)
             except NoFormulaMessages:
-                self.act_on_no_message('GPS') 
+                self.act_on_no_message('GPS')
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
-    
+
             ## car data::
             try:
                 car_data_msg = self._client.get_car_data_message(timeout=self._message_timeout)                
