@@ -55,13 +55,12 @@ def orderByDeluanay(Cones, CarState):
 		elif Cones[i].type == BLUE:
 			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].position.x, Cones[i].position.y, 98
 			numCones[i][3] = i
-	
+
 	mt = MapTrack(numCones, numCar, numVel)
 	mt.OrderCones()
 	bCones, yCones = mt.OrderedBlueCones, mt.OrderedYellowCones
 	bLostCones, yLostCones = mt.LostBlue, mt.LostYellow
 
-	
 	order = 1
 	returnYellow = []
 	hasAppeard = np.zeros(nCones)
@@ -69,10 +68,10 @@ def orderByDeluanay(Cones, CarState):
 		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
 			hasAppeard[int(cone[3])] = 1
 			returnCone = copy.deepcopy(coneTemplate)
-			returnCone.x = cone[0]
-			returnCone.y = cone[1]
+			returnCone.position.x = cone[0]
+			returnCone.position.y = cone[1]
 			returnCone.type = YELLOW
-			returnCone.order = order
+			#returnCone.order = order
 			returnYellow.append(returnCone)
 			order += 1
 	
@@ -82,10 +81,10 @@ def orderByDeluanay(Cones, CarState):
 		if cone[3] != FAKECONE and hasAppeard[int(cone[3])] != 1:
 			hasAppeard[int(cone[3])] = 1
 			returnCone = copy.deepcopy(coneTemplate)
-			returnCone.x = cone[0]
-			returnCone.y = cone[1]
+			returnCone.position.x = cone[0]
+			returnCone.position.y = cone[1]
 			returnCone.type = BLUE
-			returnCone.order = order
+			#returnCone.order = order
 			returnBlue.append(returnCone)
 			order += 1	
 
@@ -93,28 +92,28 @@ def orderByDeluanay(Cones, CarState):
 	for cone in bLostCones:
 		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)
-			returnCone.x = cone[0]
-			returnCone.y = cone[1]
+			returnCone.position.x = cone[0]
+			returnCone.position.y = cone[1]
 			returnCone.type = BLUE
-			returnCone.order = 0
+			#returnCone.order = 0
 			returnLostBlue.append(returnCone)
 		
 	returnLostYellow = []
 	for cone in yLostCones:
 		if cone[3] != FAKECONE and cone[2] != 0:
 			returnCone = copy.deepcopy(coneTemplate)
-			returnCone.x = cone[0]
-			returnCone.y = cone[1]
+			returnCone.position.x = cone[0]
+			returnCone.position.y = cone[1]
 			returnCone.type = YELLOW
-			returnCone.order = 0
+			#returnCone.order = 0
 			returnLostYellow.append(returnCone)
-		
+
 	for cone in mt.BackCones:
 		if cone[3] != FAKECONE:
 			returnCone = copy.deepcopy(coneTemplate)
-			returnCone.x = cone[0]
-			returnCone.y = cone[1]
-			returnCone.order = -1
+			returnCone.position.x = cone[0]
+			returnCone.position.y = cone[1]
+			#returnCone.order = -1
 			if cone[2] == 98:
 				returnCone.type = BLUE
 				returnLostBlue.append(returnCone)
@@ -144,7 +143,7 @@ def getWeights(Cones, CarState):
 
 
 class MapTrack:
-	def __init__(self,Cones,CarCG,CarVel,SphereR=10000, CarLength=10):
+	def __init__(self,Cones,CarCG,CarVel,SphereR=10000, CarLength=1):
 		self.Cones=Cones #matrix mx3 [x,y,color]. color = 98(blue)/121(yellow)
 		self.CarCG=CarCG #[x,y]
 		self.CarDir=CarVel/np.linalg.norm(CarVel) #[x,y] of car direction
@@ -161,6 +160,9 @@ class MapTrack:
 		self.OrderedBlueCones=np.array([]) #Calculated in OrderCones
 		self.OrderedYellowCones=np.array([]) #Calculated in OrderCones
 		self.MidPoints=np.array([]) #Calculated in FindMidPoints
+
+		self.LostBlue = []
+		self.LostYellow = []
 		
 	def FindCones4Calc(self,Angle4FakeCones=np.pi/3):
 		#Preprocessing
@@ -247,7 +249,7 @@ class MapTrack:
 			Yind[0]=NewCrossEdge[1]
 		else:
 			Bind[0]=NewCrossEdge[1]
-		NewV=np.setdiff1d(DT.simplices[NewID,:],NewCrossEdge);
+		NewV=np.setdiff1d(DT.simplices[NewID,:],NewCrossEdge)
 		if Cones[NewV,2]==ord('y'):
 			Yind[1]=NewV
 		else:
