@@ -43,7 +43,7 @@ class State:
         self.is_kalman_filter = False
         self.is_cone_clusttering = True
         self.is_compare2ground_truth = True
-        self.is_plot_state = False # Reduces running speed sagnificantly when True
+        self.is_plot_state = True # Reduces running speed sagnificantly when True
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
