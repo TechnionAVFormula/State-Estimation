@@ -5,12 +5,15 @@ import math
 ## for relative path
 import os 
 import sys
-current_dir_name = os.path.dirname(__file__)
-relative_dir_name = os.path.join(current_dir_name, '..')
-sys.path.append(relative_dir_name)
+from pathlib import Path
+current_path  = os.path.dirname(__file__)
+current_path = Path(current_path)
+relative_path = current_path.parent
+sys.path.append(str(relative_path))
 
-from .ClusteringOptics import ClusteringOptics
-# from class_defs.Cone import Cone
+from ClusteringOptics import ClusteringOptics
+from class_defs.ConeMapBase import ConeMapBase
+
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -31,7 +34,7 @@ BLUE        = messages.perception.Blue
 ORANGE_BIG  = messages.perception.OrangeBig
 ORANGE_SMALL= messages.perception.OrangeSmall
 
-class ConeMap():
+class CumulativeClustering_ConeMap(ConeMapBase):
     def __init__(self):
         # Hypre Params:
         self.filter_freq = 10
