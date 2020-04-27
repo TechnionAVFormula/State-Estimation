@@ -3,14 +3,13 @@ import plotly
 import codecs
 
 ## for relative import:
-import os 
+import os
 import sys
 from pathlib import Path
 current_dir = os.path.dirname(__file__)
 relative_dir = Path(current_dir)
 relative_dir = relative_dir.parent
-sys.path.append(str(relative_dir))    #add to sys search path
-
+sys.path.append(str(relative_dir))    # add to sys search path
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -24,6 +23,13 @@ elif ( CONFIG == ConfigEnum.LOCAL_TEST):
 else:
     raise NameError('User Should Choose Configuration from config.py')
 
+is_first_call = True
+
+def send_StateEst_DashBoard_msg(msg):
+    data = messages.state_est.FormulaState()
+    msg.data.Unpack(data)
+    time_in_milisec = msg.header.timestamp.ToMilliseconds()
+    plotly_state(data , time=time_in_milisec)
 
 
 def get_update(path_str):
@@ -49,9 +55,7 @@ def cones_to_x_y_arrays(cone_array):
     return x_array , y_array
 
 
-def plotly_state(data):
-
-    
+def plotly_state(data , time=0):
 
     ## Parse Data:
     right_cones = data.right_bound_cones
@@ -79,7 +83,7 @@ def plotly_state(data):
     c_arr = color_arr_yellow + color_arr_blue
 
 
-    
+
     ## Plot:
     scatter = pgo.Scatter( x=x_arr , y=y_arr ,  mode='markers' ,
         marker=dict( color=c_arr , size=20)
@@ -91,9 +95,10 @@ def plotly_state(data):
     fig = pgo.Figure(data=scatter)
     fig = set_fig_appearance(fig)
 
-    if IS_FIRST_CALL:
+    global is_first_call
+    if is_first_call:
         fig.write_html('State Estimation Dash-Board.html' , auto_open=True)
-        IS_FIRST_CALL = False
+        is_first_call = False
     else:
         fig.write_html('State Estimation Dash-Board.html' , auto_open=False)
 
@@ -114,4 +119,3 @@ def plotly_test():
 
 if __name__ == "__main__":
     plotly_test()
-  

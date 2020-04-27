@@ -5,9 +5,12 @@ from SystemRunnerPart.StateEstClient import StateEstClient
 # Import our precious sub-functions and objects:
 from OrderCones.orderConesMain    import orderCones # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman      # For smart Localization using a kalman filter
-from ConeMapping.ConeMapMain import ConeMap         # for clusttering cones
-from class_defs.StateEstCompPlot import CompPlot    #for plotting 
-from SystemRunnerPart.StateEst_Dash import  plotly_state
+# ConeMap:
+from ConeMapping.ConeMap_CumulativeClustering import ConeMap_CumulativeClustering
+from ConeMapping.ConeMap_Naive import ConeMap_Naive
+# Plot and Visualizations:
+from class_defs.StateEstCompPlot import CompPlot    #for plotting
+import SystemRunnerPart.StateEst_Dash as StateEst_DashBoard
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
@@ -52,17 +55,18 @@ class State:
         #DEBUG:
         self.is_debug_mode = IS_DEBUG_MODE
         self.is_kalman_filter = False
-        self.is_cone_clusttering = False
         self.is_compare2ground_truth = True
-        self.is_order_cones = False
         self.is_matplotlib = False # Reduces running speed sagnificantly when True
         self.is_plotly = True
-
+        self.is_order_cones = False
         #client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
-
-
+        #Cone map:
+        # self._cone_map = ConeMap_CumulativeClustering()   #using clustering
+        self._cone_map = ConeMap_Naive()    #simple version
+        self._ordered_cones = { "left" : np.array([] ) ,
+                        "right": np.array([] ) }
         #Localization of car (Kalman Filter):
         self._car_state = messages.state_est.CarState() # keeping our most recent known state here
         if self.is_kalman_filter:
@@ -70,22 +74,11 @@ class State:
             self._kalman_filter = Kalman()
             self._car_state_predicted = messages.state_est.CarState() # prediction only
 
-        #cone map:
-        self._cone_map =  np.array([] )
-        if self.is_cone_clusttering:
-            self._cone_mapping = ConeMap()
-        else:
-            self._running_id = 1
-
-        self._ordered_cones = { "left" : np.array([] ) ,
-                                "right": np.array([] ) }
-
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.array([])
             self._cone_truth = np.array([])
 
         if self.is_matplotlib:
-
             self._comp_plot = CompPlot()
 
 
@@ -115,7 +108,7 @@ class State:
         #distance of cone from car, in our axis
         delta_x = state_cone.r*math.cos(theta_total)
         delta_y = state_cone.r*math.sin(theta_total)
-        #add distance to cars position
+        # add distance to cars position
         state_cone.position.x = self._car_state.position.x + delta_x
         state_cone.position.y = self._car_state.position.y + delta_y
         #We known nothing (John Snow) about the cone:
@@ -177,27 +170,15 @@ class State:
         if self.is_debug_mode:
             cluster_start = timer()
 
-        
 
-        ## Using cone clusttering and mapping code:
-        if self.is_cone_clusttering:
-            temp_cone_arr = np.array([])
-             #Analize all cones for position in map and other basic elements: 
-            for perception_cone in cone_map.cones:
-                state_cone = self.cone_convert_perception2StateCone(perception_cone)
-                temp_cone_arr = np.append(temp_cone_arr , state_cone) 
-            self._cone_mapping.insert_new_points( temp_cone_arr )
-            # self._cone_map = self._cone_mapping.get_real_cones()
-            self._cone_map = self._cone_mapping.get_all_samples()
+        cone_array = np.array([])
+        #Analize all cones for position in map and other basic elements:
+        for perception_cone in cone_map.cones:
+            state_cone = self.cone_convert_perception2StateCone(perception_cone)
+            cone_array = np.append(cone_array , state_cone)
+        self._cone_map.insert_new_points( cone_array )
 
-        ## Using Simple code filtering with distance:
-        else:
-            for perception_cone in cone_map.cones:
-                state_cone = self.cone_convert_perception2StateCone(perception_cone)
-                #if it's a new cone in our map, add it:
-                if (self.check_exist_cone(state_cone) == False ):
-                    self.add_new_cone(state_cone) 
-        
+
         if self.is_debug_mode:
             print(f"clustering took {timer() - cluster_start} ms")
 
@@ -206,7 +187,7 @@ class State:
 
         ## Order Cones:
         if self.is_order_cones:
-            self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones( self._cone_map , self._car_state ) 
+            self._ordered_cones['left'] , self._ordered_cones['right'] = orderCones(  self._cone_map.get_all_samples() , self._car_state )
 
         if self.is_debug_mode:
             print(f"ordering took {timer() - order_start} ms")
@@ -220,7 +201,6 @@ class State:
         self._kalman_filter.State_Correction(data_for_correction)
         self._car_state = self._kalman_filter.Get_Current_State()
 
-    
 
     def process_gps_message(self , gps_msg):
         '''unpack data and time:'''
@@ -250,7 +230,7 @@ class State:
         gt_data = messages.ground_truth.GroundTruth()
         gt_msg.data.Unpack(gt_data)
         time_in_milisec = gt_msg.header.timestamp.ToMilliseconds()
-        
+
         #Process Car States:
         car_turth = {}
         car_turth["time_in_milisec"] = time_in_milisec
@@ -317,14 +297,13 @@ class State:
             self._car_state.theta = theta
 
 
-
     def process_server_message(self, server_messages):
         if server_messages.data.Is(messages.server.ExitMessage.DESCRIPTOR):
             return True
 
         return False
-    
-    def calc_distance_to_finish(self):
+
+    def _calc_distance_to_finish(self):
         # if len(self._ordered_cones.orange_cones) == 0 : #not seen any orange cones yet
         if True:
             dist = -1
@@ -332,36 +311,36 @@ class State:
         else:
             dist = self._ordered_cones.orange_cones[0]  #take closest orange cone
             is_found = True
-        return dist , is_found    
+        return dist , is_found
 
-    
+
     def create_formula_state_msg(self):
         # Makes a data object according to the formula msg proto "FormulaState"
-        # With the updated state         
-        
+        # With the updated state
+
         #create an empty message of state_est data:
         data = messages.state_est.FormulaState()
-        
+
         # Car's position:
-        data.current_state.position.x = self._car_state.position.x 
-        data.current_state.position.y = self._car_state.position.y 
+        data.current_state.position.x = self._car_state.position.x
+        data.current_state.position.y = self._car_state.position.y
         data.current_state.velocity.x = self._car_state.velocity.x
         data.current_state.velocity.y = self._car_state.velocity.y
         data.current_state.theta      = self._car_state.theta
-        
-        # finish estimation:
-        data.distance_to_finish , is_found = self.calc_distance_to_finish()
 
-        # Cones:    
+        # finish estimation:
+        data.distance_to_finish , is_found = self._calc_distance_to_finish()
+
+        # Cones:
         if self.is_order_cones:
             for cone in self._ordered_cones['right']:
                 state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                data.right_bound_cones.append(state_cone)    
+                data.right_bound_cones.append(state_cone)
             for cone in self._ordered_cones['left']:
                 state_cone = self.cone_convert_from_ordered2state_cone(cone)
                 data.left_bound_cones.append(state_cone)
         else:
-            for state_cone in self._cone_map:
+            for state_cone in self._cone_map.get_all_samples():
                 if state_cone.type == YELLOW:
                     data.right_bound_cones.append(state_cone)
                 if state_cone.type == BLUE:
@@ -391,11 +370,11 @@ class State:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
-        save_as_json(msg_out)
+        # save_as_json(msg_out)
 
         ## send data to dash-board
         if self.is_plotly:
-            plotly_state(data)
+            StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
 
 
     def act_on_no_message(self , source_str):
@@ -457,7 +436,7 @@ class State:
             except Exception as e:
                 print(f"StateMain::Exception: {e}")
     # ^===============================================^ Run: ^===============================================^ #
-            
+
     #end run(self)
 '''
 End of class

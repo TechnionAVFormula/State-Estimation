@@ -1,6 +1,6 @@
 import numpy as np
 
-class ConeMapBase:
+class ConeMap_Base():
 
     def __init__(self):
         self._cone_samples = np.array( [] ) #accumaltive ssamples before clusstering

@@ -3,7 +3,7 @@ import math
 
 
 ## for relative path
-import os 
+import os
 import sys
 from pathlib import Path
 current_path  = os.path.dirname(__file__)
@@ -11,8 +11,8 @@ current_path = Path(current_path)
 relative_path = current_path.parent
 sys.path.append(str(relative_path))
 
-from ClusteringOptics import ClusteringOptics
-from class_defs.ConeMapBase import ConeMapBase
+from .ClusteringOptics import ClusteringOptics
+from .ConeMap_Base import ConeMap_Base
 
 
 ## import depanding on running state / configuration state:
@@ -34,7 +34,8 @@ BLUE        = messages.perception.Blue
 ORANGE_BIG  = messages.perception.OrangeBig
 ORANGE_SMALL= messages.perception.OrangeSmall
 
-class CumulativeClustering_ConeMap(ConeMapBase):
+
+class ConeMap_CumulativeClustering(ConeMap_Base):
     def __init__(self):
         # Hypre Params:
         self.filter_freq = 10
@@ -48,16 +49,16 @@ class CumulativeClustering_ConeMap(ConeMapBase):
 
 
     def insert_new_points(  self  , cone_array   ):
-        self._call_counter = self._call_counter + 1 
+        self._call_counter = self._call_counter + 1
         self._cone_samples = np.append( self._cone_samples , cone_array )
 
 
-        # Not every insert causes filttering. 
+        # Not every insert causes filttering.
         # we need to get a certein amount of samples - denoted by self.filter_freq:
         if ( self._call_counter >=  self.filter_freq  ):
             print(f"ConeMap::Filtering cones.  _call_counter={self._call_counter}")
             self._call_counter = 0
-            
+
             yellow_cones , blue_cones , orange_cones = self.__prepare_cones4clusttering()
             blue_clust    = ClusteringOptics(blue_cones  ,self.real_cone_threshold)
             yellow_clust  = ClusteringOptics(yellow_cones,self.real_cone_threshold)
@@ -74,27 +75,28 @@ class CumulativeClustering_ConeMap(ConeMapBase):
 
             if cone.type==YELLOW :
                 if len(yellow_cones) == 0:
-                   yellow_cones=np.append(yellow_cones, element) 
+                   yellow_cones=np.append(yellow_cones, element)
                 else:
                     yellow_cones=np.vstack((yellow_cones, element))
 
             if cone.type==BLUE :
                 if len(blue_cones) == 0:
-                   blue_cones=np.append(blue_cones, element) 
+                   blue_cones=np.append(blue_cones, element)
                 else:
                     blue_cones=np.vstack((blue_cones, element))
 
             if cone.type==ORANGE_BIG:
                 if len(orange_cones) == 0:
-                   orange_cones=np.append(orange_cones, element) 
+                   orange_cones=np.append(orange_cones, element)
                 else:
-                    orange_cones=np.vstack((orange_cones, element))  
+                    orange_cones=np.vstack((orange_cones, element))
 
             '''!!! Add ORANGE_SMALL !!!'''
-            
-        return yellow_cones, blue_cones, orange_cones 
+
+        return yellow_cones, blue_cones, orange_cones
 
 
+    ## Also in base-class
     def get_all_samples( self ):
         return self._cone_samples
 

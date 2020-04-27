@@ -207,7 +207,7 @@ class MapTrack:
 		DT=Delaunay(points) #Triangulate only /w Cones
 		return (points[DT.simplices])
 		
-	def OrderCones(self,MaxItrAmnt=25,CostThreshold=-0.2,ColorCostWeight=0.3, \
+	def OrderCones(self,MaxItrAmnt=25,CostThreshold=-0.2,ColorCostWeight=0.3,
                    RRatioThreshold=20):
 		'''
 		Input:
