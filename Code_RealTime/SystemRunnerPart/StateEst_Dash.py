@@ -1,11 +1,35 @@
 import plotly.graph_objects as pgo
+import plotly
+import codecs
 
-def plotly_test():
-    x = [2 , 2]
-    y = [3 , 5]
-    scatter = pgo.Scatter(x=x , y=y , mode='markers')
-    fig = pgo.Figure(data=scatter)
-    fig.write_html('first_figure.html', auto_open=True)
+## for relative import:
+import os 
+import sys
+from pathlib import Path
+current_dir = os.path.dirname(__file__)
+relative_dir = Path(current_dir)
+relative_dir = relative_dir.parent
+sys.path.append(str(relative_dir))    #add to sys search path
+
+
+## import depanding on running state / configuration state:
+from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
+
+if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+    from pyFormulaClient import messages
+    from pyFormulaClient.MessageDeque import NoFormulaMessages
+elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+    from pyFormulaClientNoNvidia import messages
+    from pyFormulaClientNoNvidia.MessageDeque import NoFormulaMessages
+else:
+    raise NameError('User Should Choose Configuration from config.py')
+
+
+
+def get_update(path_str):
+    with open(path_str) as f:
+        data = json.load(f)
+    plotly_state(data)
 
 
 def set_fig_appearance(fig):
@@ -26,6 +50,9 @@ def cones_to_x_y_arrays(cone_array):
 
 
 def plotly_state(data):
+
+    
+
     ## Parse Data:
     right_cones = data.right_bound_cones
     left_cones  = data.left_bound_cones
@@ -59,12 +86,32 @@ def plotly_state(data):
     )
     # color='rgb(140,140,0)'
 
+
+
     fig = pgo.Figure(data=scatter)
     fig = set_fig_appearance(fig)
-    fig.write_html('State Estimation Dash-Board.html' , auto_open=True)
+
+    if IS_FIRST_CALL:
+        fig.write_html('State Estimation Dash-Board.html' , auto_open=True)
+        IS_FIRST_CALL = False
+    else:
+        fig.write_html('State Estimation Dash-Board.html' , auto_open=False)
+
+
+def plotly_test():
+    x = [1 , 3]
+    y = [2 , 2]
+    scatter = pgo.Scatter(x=x , y=y , mode='markers')
+    fig = pgo.Figure(data=scatter)
+    fig.write_html('State Estimation Dash-Board.html' , auto_open=True )
+
+    x = [2 , 2]
+    y = [3 , 5]
+    scatter = pgo.Scatter(x=x , y=y , mode='markers')
+    fig = pgo.Figure(data=scatter)
+    fig.write_html('State Estimation Dash-Board.html' , auto_open=False )
 
 
 if __name__ == "__main__":
     plotly_test()
-
-    
+  

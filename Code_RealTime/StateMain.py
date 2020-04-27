@@ -24,8 +24,9 @@ else:
 
 # for showing messages:
 from pprint import pprint 
-import google.protobuf.json_format as proto_format
+import google.protobuf.json_format as proto_format 
 # from SystemRunnerPart.print_messages_file import print_messages_file 
+from SystemRunnerPart.print_messages_file import save_as_json
 import json
 
 
@@ -389,6 +390,8 @@ class State:
         # send message:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
+
+        save_as_json(msg_out)
 
         ## send data to dash-board
         if self.is_plotly:
