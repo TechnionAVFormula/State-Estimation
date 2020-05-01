@@ -64,8 +64,8 @@ ORANGE_SMALL = messages.perception.OrangeSmall
 class State:
     def __init__(self):
         # DEBUG:
-        self.is_debug_mode = IS_DEBUG_MODE
-        self.is_kalman_filter = False
+        self.is_debug_mode =  False # IS_DEBUG_MODE
+        self.is_kalman_filter = True
         self.is_compare2ground_truth = True
         self.is_matplotlib = False  # Reduces running speed sagnificantly when True
         self.is_plotly = True
@@ -150,37 +150,12 @@ class State:
         """
         return state_cone
 
-    def check_exist_cone(self, new_cone):
-        epsilon = 1  # 1 meter of error around cone
-        x_new = new_cone.position.x
-        y_new = new_cone.position.y
-
-        for old_cone in self._cone_map:
-            x_old = old_cone.position.x
-            y_old = old_cone.position.y
-            seperation = math.sqrt(
-                math.pow(x_new - x_old, 2) + math.pow(y_new - y_old, 2)
-            )
-            if seperation < epsilon:
-                return True  # exist
-        # if we came here, no existing cone match one of the existing cones
-        return False  # not exist
-
-    def add_new_cone(self, state_cone):
-        state_cone.cone_id = self._running_id
-        self._running_id += 1  # just a mock, later we need to indentify cones that already exist in our map.
-        # Add cone to array:
-        new_elem = np.array([state_cone])
-        self._cone_map = np.append(self._cone_map, new_elem)
-
     def process_cones_message(self, cone_msg):
         """Parse Data and time"""
         cone_map = messages.perception.ConeMap()
         cone_msg.data.Unpack(cone_map)
         if self.is_debug_mode:
-            print(
-                f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue"
-            )
+            print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
         if self.is_debug_mode:
             cluster_start = timer()
@@ -207,13 +182,6 @@ class State:
         if self.is_debug_mode:
             print(f"ordering took {timer() - order_start} ms")
 
-    def kalman_predict(self, data_for_prediction):
-        self._kalman_filter.State_Prediction(data_for_prediction)
-        self._car_state_predicted = self._kalman_filter.Get_Current_State()
-
-    def kalman_correct(self, data_for_prediction):
-        self._kalman_filter.State_Correction(data_for_prediction)
-        self._car_state = self._kalman_filter.Get_Current_State()
 
     def process_gps_message(self, gps_msg):
         """unpack data and time:"""
@@ -261,6 +229,7 @@ class State:
                     "type": cone.type,
                 }
                 self._cone_truth = np.append(self._cone_truth, tmp_cone)
+            
             if self.is_matplotlib:
 
                 self._comp_plot.plot_cones(self._cone_truth)
@@ -288,16 +257,17 @@ class State:
             return
         self._last_kalman_time_milisec = time_in_milisec
 
-        """ process: """
-        delta = car_data.car_measurments.steering_angle  # steering angle
-        acceleration_long = car_data.imu_sensor.imu_measurments.acceleration.x
-        acceleration_lat = car_data.imu_sensor.imu_measurments.acceleration.y
-        # some times this data exists:
-        Vx = car_data.imu_sensor.imu_measurments.velocity.x
-        Vy = car_data.imu_sensor.imu_measurments.velocity.y
-        theta = car_data.imu_sensor.imu_measurments.orientation.z
 
         if self.is_kalman_filter:
+            
+            """ Prediction: """
+            delta = car_data.car_measurments.steering_angle  # steering angle
+            acceleration_long = car_data.imu_sensor.imu_measurments.acceleration.x
+            acceleration_lat = car_data.imu_sensor.imu_measurments.acceleration.y
+            # some times this data exists:
+            Vx = car_data.imu_sensor.imu_measurments.velocity.x
+            Vy = car_data.imu_sensor.imu_measurments.velocity.y
+            theta = car_data.imu_sensor.imu_measurments.orientation.z
 
             data_for_prediction = {
                 "steering_angle": delta,  #
@@ -306,7 +276,11 @@ class State:
                 "acceleration_lat": acceleration_lat,
             }
 
-            """This should be changed!"""
+            self._kalman_filter.State_Prediction(data_for_prediction)
+
+            ''' Correction: '''
+
+            """ ! This should be changed ! """
             data_for_correction = data_for_prediction
             if self._GPSOneShot.check_new_data():
                 x, y = self._GPSOneShot.get_data()
@@ -316,12 +290,13 @@ class State:
                 y = None
                 is_exist_GPS = False
 
+            data_for_correction["gyro"] = car_data.imu_sensor.imu_measurments.angular_velocity.z   
             data_for_correction["is_exist_GPS"] = is_exist_GPS
             data_for_correction["GPS_x"] = x
             data_for_correction["GPS_y"] = y
 
-            self._kalman_filter.State_Prediction(data_for_prediction)
             self._kalman_filter.State_Correction(data_for_correction)
+
             self._car_state = self._kalman_filter.Get_Current_State()
 
         else:
@@ -354,12 +329,19 @@ class State:
         # create an empty message of state_est data:
         data = messages.state_est.FormulaState()
 
-        # Car's position:
-        data.current_state.position.x = self._car_state.position.x
-        data.current_state.position.y = self._car_state.position.y
-        data.current_state.velocity.x = self._car_state.velocity.x
-        data.current_state.velocity.y = self._car_state.velocity.y
-        data.current_state.theta = self._car_state.theta
+        # Car's position: 
+        data.current_state.position.x            = self._car_state.position.x           
+        data.current_state.position.y            = self._car_state.position.y           
+        data.current_state.position_deviation.x  = self._car_state.position_deviation.x 
+        data.current_state.position_deviation.y  = self._car_state.position_deviation.y 
+        data.current_state.velocity.x            = self._car_state.velocity.x           
+        data.current_state.velocity.y            = self._car_state.velocity.y           
+        data.current_state.velocity_deviation.x  = self._car_state.velocity_deviation.x 
+        data.current_state.velocity_deviation.y  = self._car_state.velocity_deviation.y 
+        data.current_state.theta                 = self._car_state.theta                
+        data.current_state.theta_deviation       = self._car_state.theta_deviation      
+        data.current_state.theta_dot             = self._car_state.theta_dot            
+        data.current_state.theta_dot_deviation   = self._car_state.theta_dot_deviation 
 
         # finish estimation:
         data.distance_to_finish, is_found = self._calc_distance_to_finish()
@@ -407,7 +389,10 @@ class State:
 
         ## send data to dash-board
         if self.is_plotly:
-            StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
+            if self.is_compare2ground_truth and ( len(self._ground_truth_memory) > 0 ) :
+                StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._ground_truth_memory[-1])
+            else:
+                StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
 
     def act_on_no_message(self, source_str):
         if self.is_debug_mode:
@@ -440,9 +425,7 @@ class State:
 
             ## car data::
             try:
-                car_data_msg = self._client.get_car_data_message(
-                    timeout=self._message_timeout
-                )
+                car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
                 self.process_car_data_message(car_data_msg)
                 self.send_message2control(car_data_msg)
             except NoFormulaMessages:
@@ -462,9 +445,7 @@ class State:
 
             ## Ground Truth:
             try:
-                ground_truth_msg = self._client.get_ground_truth_message(
-                    timeout=self._message_timeout
-                )
+                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
                 self.process_ground_truth_message_memory(ground_truth_msg)
                 # No need to send message2control
             except NoFormulaMessages:
