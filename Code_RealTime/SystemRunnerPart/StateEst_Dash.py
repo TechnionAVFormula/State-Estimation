@@ -25,10 +25,20 @@ else:
 
 is_first_call = True
 
+
+def send_StateEst_DashBoard_with_GroundTruth(msg ,car_turth): 
+    data = messages.state_est.FormulaState()
+    msg.data.Unpack(data)
+    time_in_milisec = msg.header.timestamp.ToMilliseconds()
+    
+    plotly_state(data , car_turth ,  time=time_in_milisec)
+
+
 def send_StateEst_DashBoard_msg(msg):
     data = messages.state_est.FormulaState()
     msg.data.Unpack(data)
     time_in_milisec = msg.header.timestamp.ToMilliseconds()
+
     plotly_state(data , time=time_in_milisec)
 
 
@@ -55,7 +65,7 @@ def cones_to_x_y_arrays(cone_array):
     return x_array , y_array
 
 
-def plotly_state(data , time=0):
+def plotly_state(data , car_turth, time=0):
 
     ## Parse Data:
     right_cones = data.right_bound_cones
@@ -69,6 +79,11 @@ def plotly_state(data , time=0):
     car_pos_deviation_y = data.current_state.position_deviation.y
 
 
+    ## Parse GroundTruth"
+    true_x = car_turth["x"]
+    true_y = car_turth["y"]
+    true_theta = car_turth["theta"]
+
 
     x_arr_yellow , y_arr_yellow = cones_to_x_y_arrays(right_cones)
     color_arr_yellow = ['yellow']  * len(x_arr_yellow)
@@ -76,11 +91,11 @@ def plotly_state(data , time=0):
     color_arr_blue = ['blue'] * len(x_arr_blue)
 
     if len(x_arr_yellow)==0:
-        return
+        print(f"plotly::no cones")
 
-    x_arr = x_arr_yellow + x_arr_blue
-    y_arr = y_arr_yellow + y_arr_blue
-    c_arr = color_arr_yellow + color_arr_blue
+    x_arr = x_arr_yellow + x_arr_blue + [car_x] + [true_x]
+    y_arr = y_arr_yellow + y_arr_blue + [car_y] + [true_y]
+    c_arr = color_arr_yellow + color_arr_blue + ['red']  + ['orange']
 
 
 

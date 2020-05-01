@@ -39,9 +39,7 @@ class Kalman:
             self._Motion_Noise = np.diag([3, 0 ** 2])
             self._Measure_Acc_Noise = np.diag([0.1555, 0.1555, 0.22])
             self._External_Measure_Noise = np.diag([3, 0.1])
-        elif (CONFIG == ConfigEnum.LOCAL_TEST) or (
-            CONFIG == ConfigEnum.COGNATA_SIMULATION
-        ):
+        elif (CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
             # Test values:
             self._State_Correction = np.zeros([5, 1])
             self._Measure_GPS_Noise = np.diag([0.0025, 0.0025])
@@ -49,6 +47,8 @@ class Kalman:
             self._Motion_Noise = np.diag([3, 0 ** 2])
             self._Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
             self._External_Measure_Noise = np.diag([3, 0.1])
+        else:
+            raise NameError("User Should Choose Configuration from config.py")
         """
         function [P,R,Q]  = initial_cov_mats()
               %x    %y      %Vx  %Vy   %Theta
@@ -83,9 +83,7 @@ end
         self._Measure_GPS = np.array([])
         self._Measure_Accelerometer = np.array([])
         self._External_Measure_Update = np.array([])
-        self._State_Correction = np.array([])
         self._State_Update = np.array([])
-        self._Covariance_Update = np.array([])
         self._Measure_GPS_Model = np.array([])
         self._Measure_Accelerometer_Model = np.array([])
         self._Control_Command = np.array([])
@@ -133,17 +131,22 @@ end
             double steering_angle = 9;
             double steering_angle_deviation = 10;
 
-        Then the function returns car_state    
         """
         # Example:
-        state.position.x = 15
-        state.position.y = -40.123
-        state.position_deviation.x = 0.53  # that's the variance in x
-        state.position_deviation.x = 0.72  # that's the variance in y
-        state.velocity.x = 7  # we call it Vx
-        state.velocity.y = -3.14159265  # we call it Vy
-        state.velocity_deviation.x = 0.53  # that's the variance in x
-        state.velocity_deviation.x = 0.72  # that's the variance in y
+        state.position.x = self._State_Correction[0,0]
+        state.position.y = self._State_Correction[1,0]
+        state.position_deviation.x = self._Covariance_Update[0,0]
+        state.position_deviation.y = self._Covariance_Update[1,1]
+        state.velocity.x = self._State_Correction[2,0]
+        state.velocity.y = self._State_Correction[3,0]
+        state.velocity_deviation.x = self._Covariance_Update[2,2]
+        state.velocity_deviation.y = self._Covariance_Update[3,3]
+        state.theta = self._State_Correction[4,0]
+        state.theta_deviation = self._Covariance_Update[4,4]
+        state.theta_dot = self._Rotational_Speed
+        state.theta_dot_deviation = -1000
+        # state.steering_angle = self._Control_Command[1]
+        # state.steering_angle_deviation = -1000
         return state
 
     """Do the prediction when called.  delta_t_milisec is the time since last"""
@@ -155,19 +158,27 @@ end
         acceleration_long = data["acceleration_long"]
 
         # ==update what needed h`ere:
-        self._Time_Delta = delta_t_milisec
-
+        self._Time_Delta = delta_t_sec
+        self._Control_Command = np.array([[acceleration_long],[steering_angle]])
         # ==act here::
         self._State_Prediction_function()
 
     def State_Correction(self, data):
-        x = data["x"]
-        y = data["y"]
+        if data["is_exist_GPS"]:
+            x = data["GPS_x"]
+            y = data["GPS_y"]
+            self._Measure_GPS = np.array([[x] , [y]])
+        else:
+            self._Measure_GPS = np.array([])
+        
+        '''
+        steering_angle = data["steering_angle"]
+        '''
+        acceleration_long = data["acceleration_long"]
+        acceleration_lat  = data["acceleration_lat"]
+        gyro = data["gyro"]
 
-        self._Measure_GPS = np.array([x, y])
-        self._Measure_Accelerometer = ()
-
-        # ==update what needed here:
+        self._Measure_Accelerometer = np.array([[acceleration_long] , [acceleration_lat] , [gyro] ])
 
         # ==act here:
         self._State_Update_function()
@@ -217,6 +228,7 @@ end
 
         Movement = np.array(
             [
+                #X:
                 [
                     self._Time_Delta * self._State_Correction[2]
                     + (self._Time_Delta ** 2)
@@ -224,6 +236,7 @@ end
                     * ma.cos(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
+                #Y:
                 [
                     self._Time_Delta * self._State_Correction[3]
                     + (self._Time_Delta ** 2)
@@ -231,16 +244,19 @@ end
                     * ma.sin(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
+                #Vx:
                 [
                     self._Time_Delta
                     * ma.cos(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
+                #Vy:
                 [
                     self._Time_Delta
                     * ma.sin(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
+                #Theta:
                 [self._Time_Delta * self._Rotational_Speed],
             ],
             dtype="float",
@@ -342,7 +358,7 @@ end
         )
         self._Measure_Accelerometer_Model = np.array(
             [
-                [
+                [ 
                     self._Control_Command[0]
                     * ma.cos(self._State_Prediction[4] + self._Slip_angle)
                 ],

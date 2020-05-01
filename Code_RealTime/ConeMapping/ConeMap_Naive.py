@@ -42,6 +42,8 @@ class ConeMap_Naive(ConeMap_Base):
     # def get_all_samples( self ):
     #     return self._cone_samples
 
+    def get_all_samples( self ):
+            return self._cone_samples
 
 def main():
     cone_map = ConeMap_Base()
