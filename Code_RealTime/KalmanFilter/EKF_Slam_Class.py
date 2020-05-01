@@ -7,47 +7,49 @@ from numpy.linalg import inv, norm
 import os
 import sys
 from pathlib import Path
-current_folder_str  = os.path.dirname(__file__)
-current_folder_path = Path(current_folder_str)   #make a Path an object out of the path
-relative_folder_path= current_folder_path.parent #get relative parent
-sys.path.append(str(relative_folder_path))    #add to search path for imports
+
+current_folder_str = os.path.dirname(__file__)
+current_folder_path = Path(current_folder_str)  # make a Path an object out of the path
+relative_folder_path = current_folder_path.parent  # get relative parent
+sys.path.append(str(relative_folder_path))  # add to search path for imports
 
 ## import depanding on running state / configuration state:
-from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
+from config import CONFIG, ConfigEnum, IS_DEBUG_MODE
 
-if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+if (CONFIG == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
-elif ( CONFIG == ConfigEnum.LOCAL_TEST):
+elif CONFIG == ConfigEnum.LOCAL_TEST:
     from pyFormulaClientNoNvidia import messages
 else:
-    raise NameError('User Should Choose Configuration from config.py')
+    raise NameError("User Should Choose Configuration from config.py")
 
 
-
-class Kalman():
+class Kalman:
     def __init__(self):
         self._Alpha = 1000
-        self._Time_Delta = 0.01   # Shouldn't be known in advance.
+        self._Time_Delta = 0.01  # Shouldn't be known in advance.
         self._Vehicle_Rear_Length = 0.7675
         self._Vehicle_Total_Length = 1.535
         self._Number_of_Cones = 0
-        if (CONFIG  == ConfigEnum.REAL_TIME):
+        if CONFIG == ConfigEnum.REAL_TIME:
             # Real time covariance.
-            self._State_Correction = np.zeros([5 , 1])
+            self._State_Correction = np.zeros([5, 1])
             self._Measure_GPS_Noise = np.diag([2, 2])
-            '''NO _Covariance_Update here? ''' #-Nir
+            self._Covariance_Update = 0.01 * np.eye(len(self._State_Correction))
             self._Motion_Noise = np.diag([3, 0 ** 2])
             self._Measure_Acc_Noise = np.diag([0.1555, 0.1555, 0.22])
             self._External_Measure_Noise = np.diag([3, 0.1])
-        elif ( CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
+        elif (CONFIG == ConfigEnum.LOCAL_TEST) or (
+            CONFIG == ConfigEnum.COGNATA_SIMULATION
+        ):
             # Test values:
-            self._State_Correction = np.zeros([5 , 1])
+            self._State_Correction = np.zeros([5, 1])
             self._Measure_GPS_Noise = np.diag([0.0025, 0.0025])
             self._Covariance_Update = 0.01 * np.eye(len(self._State_Correction))
             self._Motion_Noise = np.diag([3, 0 ** 2])
             self._Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
             self._External_Measure_Noise = np.diag([3, 0.1])
-        '''
+        """
         function [P,R,Q]  = initial_cov_mats()
               %x    %y      %Vx  %Vy   %Theta
 R  =   [ [    2   , 0      ,   0       ,  0         , 0]  ;  ...  
@@ -73,7 +75,7 @@ Q  =   [ [    3   , 0      ,   0       ,  0         , 0]  ;  ...
                  -2.04133926343496e-08      ,-0.00353120114306259                ,0                                          ,0                                              ,2.65329138921966        ] ;
  
 end
-        '''
+        """
 
         self._Slip_angle = np.array([])
         self._State_Prediction = np.array([])
@@ -89,33 +91,33 @@ end
         self._Control_Command = np.array([])
         self._Rotational_Speed = []
 
+    # =================================================================
+    """Functions that need implementation:   <<Start>>"""
 
-# =================================================================
-    '''Functions that need implementation:   <<Start>>'''
+    """Get a list of cones we're sure about. Each cone has an ID that needs to be followed"""
 
-    '''Get a list of cones we're sure about. Each cone has an ID that needs to be followed'''
     def Measure_Cones(self, cone_array):
         for cone in cone_array:
-            r       = cone.r
-            theta   = cone.theta
+            r = cone.r
+            theta = cone.theta
             cone_id = cone.cone_id
             print(f" r={r}  theta={theta}  cone_id={cone_id}")
-    
-    '''Returns an array with all the cones we are following. Each cone as the following fields:
+
+    """Returns an array with all the cones we are following. Each cone as the following fields:
        cone_id
        x    # not for this code
        y    # not for this code
        r
        alpha #angle from car's prespective
        position_deviation
-       '''
+       """
+
     def Get_Cones(self):
         pass
 
-
     def Get_Current_State(self):
         state = messages.state_est.CarState()
-        '''	state has the following fields, most of them should be inserted:
+        """	state has the following fields, most of them should be inserted:
             Vector2D position = 1;				
             Vector2D position_deviation = 2;
             
@@ -132,42 +134,46 @@ end
             double steering_angle_deviation = 10;
 
         Then the function returns car_state    
-        '''
-        #Example:
+        """
+        # Example:
         state.position.x = 15
         state.position.y = -40.123
-        state.position_deviation.x = 0.53  #that's the variance in x
-        state.position_deviation.x = 0.72  #that's the variance in y
-        state.velocity.x = 7            #we call it Vx
-        state.velocity.y = -3.14159265  #we call it Vy
-        state.velocity_deviation.x = 0.53  #that's the variance in x
-        state.velocity_deviation.x = 0.72  #that's the variance in y
+        state.position_deviation.x = 0.53  # that's the variance in x
+        state.position_deviation.x = 0.72  # that's the variance in y
+        state.velocity.x = 7  # we call it Vx
+        state.velocity.y = -3.14159265  # we call it Vy
+        state.velocity_deviation.x = 0.53  # that's the variance in x
+        state.velocity_deviation.x = 0.72  # that's the variance in y
         return state
-        
-    '''Do the prediction when called.  delta_t_milisec is the time since last'''    
-    def State_Prediction(self , data):
-        delta_t_milisec = data["delta_t_milisec"] #time since alst prediction
 
-        #==update what needed here:
-        self._Time_Delta= delta_t_milisec
+    """Do the prediction when called.  delta_t_milisec is the time since last"""
 
-        #==act here::
+    def State_Prediction(self, data):
+        delta_t_milisec = data["delta_t_milisec"]  # time since alst prediction
+        delta_t_sec = float(delta_t_milisec) / 1000
+        steering_angle = data["steering_angle"]
+        acceleration_long = data["acceleration_long"]
+
+        # ==update what needed h`ere:
+        self._Time_Delta = delta_t_milisec
+
+        # ==act here::
         self._State_Prediction_function()
 
-
-    def State_Correction(self , data):        
+    def State_Correction(self, data):
         x = data["x"]
         y = data["y"]
 
-        #==update what needed here:
+        self._Measure_GPS = np.array([x, y])
+        self._Measure_Accelerometer = ()
 
-        #==act here:
+        # ==update what needed here:
+
+        # ==act here:
         self._State_Update_function()
-    
-    
-    '''Functions that need implementation:   <<End>>'''
-# =================================================================
 
+    """Functions that need implementation:   <<End>>"""
+    # =================================================================
 
     @property
     def _Measure_GPS(self):
@@ -212,30 +218,30 @@ end
         Movement = np.array(
             [
                 [
-                    self._Time_Delta * self._State_Correction[2]  
-                    + (self._Time_Delta ** 2)  
+                    self._Time_Delta * self._State_Correction[2]
+                    + (self._Time_Delta ** 2)
                     / 2
                     * ma.cos(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
                 [
-                    self._Time_Delta * self._State_Correction[3]  
-                    + (self._Time_Delta ** 2)  
+                    self._Time_Delta * self._State_Correction[3]
+                    + (self._Time_Delta ** 2)
                     / 2
                     * ma.sin(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
                 [
-                    self._Time_Delta  
+                    self._Time_Delta
                     * ma.cos(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
                 [
-                    self._Time_Delta 
+                    self._Time_Delta
                     * ma.sin(self._State_Correction[4] + self._Slip_angle)
                     * self._Control_Command[0]
                 ],
-                [self._Time_Delta * self._Rotational_Speed], 
+                [self._Time_Delta * self._Rotational_Speed],
             ],
             dtype="float",
         ).reshape([5, 1])
@@ -247,9 +253,9 @@ end
                 [
                     0,
                     0,
-                    self._Time_Delta,  
+                    self._Time_Delta,
                     0,
-                    -(self._Time_Delta ** 2)  
+                    -(self._Time_Delta ** 2)
                     * self._Control_Command[0]
                     * ma.sin(self._State_Correction[4] + self._Slip_angle),
                 ],
@@ -257,8 +263,8 @@ end
                     0,
                     0,
                     0,
-                    self._Time_Delta,  
-                    (self._Time_Delta ** 2)  
+                    self._Time_Delta,
+                    (self._Time_Delta ** 2)
                     * self._Control_Command[0]
                     * ma.cos(self._State_Correction[4] + self._Slip_angle),
                 ],
@@ -267,7 +273,7 @@ end
                     0,
                     0,
                     0,
-                    -self._Time_Delta  
+                    -self._Time_Delta
                     * self._Control_Command[0]
                     * ma.sin(self._State_Correction[4] + self._Slip_angle),
                 ],
@@ -276,7 +282,7 @@ end
                     0,
                     0,
                     0,
-                    self._Time_Delta  
+                    self._Time_Delta
                     * self._Control_Command[0]
                     * ma.cos(self._State_Correction[4] + self._Slip_angle),
                 ],
@@ -291,22 +297,22 @@ end
         Jacobian_Motion_Noise = np.array(
             [
                 [
-                    (self._Time_Delta ** 2)  
+                    (self._Time_Delta ** 2)
                     * ma.cos(self._State_Correction[4] + self._Slip_angle),
                     0,
                 ],
                 [
-                    (self._Time_Delta ** 2)  
+                    (self._Time_Delta ** 2)
                     * ma.sin(self._State_Correction[4] + self._Slip_angle),
                     0,
                 ],
                 [
-                    self._Time_Delta  
+                    self._Time_Delta
                     * ma.cos(self._State_Correction[4] + self._Slip_angle),
                     0,
                 ],
                 [
-                    self._Time_Delta  
+                    self._Time_Delta
                     * ma.sin(self._State_Correction[4] + self._Slip_angle),
                     0,
                 ],
@@ -397,7 +403,9 @@ end
             F = np.block([np.eye(7), np.zeros([7, 2 * (self._Number_of_Cones - 1)])],)
         else:
             F = np.block([[np.eye(5)], [np.zeros([2, 5])]])
-        Jacobian__Measure_Accelerometer_Model = Jacobian__Measure_Accelerometer_Model @ F
+        Jacobian__Measure_Accelerometer_Model = (
+            Jacobian__Measure_Accelerometer_Model @ F
+        )
         S_Inv_Acc_Model = inv(
             np.array(
                 Jacobian__Measure_Accelerometer_Model
@@ -606,7 +614,10 @@ end
                     self._Covariance_Prediction,
                     np.zeros([self._Covariance_Prediction.shape[0], 2]),
                 ],
-                [np.zeros([2, self._Covariance_Prediction.shape[1]]), 0.01 * np.eye(2),],
+                [
+                    np.zeros([2, self._Covariance_Prediction.shape[1]]),
+                    0.01 * np.eye(2),
+                ],
             ]
         )
         self._External_Measure_Update = self._External_Measure_Update[1:, :]
