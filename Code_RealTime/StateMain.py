@@ -68,7 +68,7 @@ class State:
         self.is_compare2ground_truth = True
         self.is_matplotlib = False  # Reduces running speed sagnificantly when True
         self.is_plotly = True
-        self.is_order_cones = True
+        self.is_order_cones = False
         # client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
@@ -165,6 +165,7 @@ class State:
             state_cone = self.cone_convert_perception2StateCone(perception_cone)
             cone_array = np.append(cone_array, state_cone)
         self._cone_map.insert_new_points(cone_array)
+        real_cones = self._cone_map.get_all_samples() 
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
@@ -174,7 +175,7 @@ class State:
             order_start = timer()
 
         if self.is_order_cones:
-            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones(self._cone_map.get_all_samples(), self._car_state)
+            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones( real_cones  , self._car_state)
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"ordering took {timer() - order_start} ms")
@@ -326,7 +327,6 @@ class State:
         # create an empty message of state_est data:
         data = messages.state_est.FormulaState()
 
-        # Car's position: 
         data.current_state.position.x            = self._car_state.position.x           
         data.current_state.position.y            = self._car_state.position.y           
         data.current_state.position_deviation.x  = self._car_state.position_deviation.x 

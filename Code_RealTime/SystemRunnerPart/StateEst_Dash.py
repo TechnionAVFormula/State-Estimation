@@ -26,12 +26,12 @@ else:
 is_first_call = True
 
 
-def send_StateEst_DashBoard_with_GroundTruth(msg ,car_turth): 
+def send_StateEst_DashBoard_with_GroundTruth(msg ,CarTruth): 
     data = messages.state_est.FormulaState()
     msg.data.Unpack(data)
     time_in_milisec = msg.header.timestamp.ToMilliseconds()
     
-    plotly_state(data , car_turth ,  time=time_in_milisec)
+    plotly_state(data , CarTruth ,  time=time_in_milisec)
 
 
 def send_StateEst_DashBoard_msg(msg):
@@ -65,7 +65,7 @@ def cones_to_x_y_arrays(cone_array):
     return x_array , y_array
 
 
-def plotly_state(data , car_turth, time=0):
+def plotly_state(data , CarTruth, time=0):
 
     ## Parse Data:
     right_cones = data.right_bound_cones
@@ -80,9 +80,9 @@ def plotly_state(data , car_turth, time=0):
 
 
     ## Parse GroundTruth"
-    true_x = car_turth["x"]
-    true_y = car_turth["y"]
-    true_theta = car_turth["theta"]
+    true_x = CarTruth["x"]
+    true_y = CarTruth["y"]
+    true_theta = CarTruth["theta"]
 
 
     x_arr_yellow , y_arr_yellow = cones_to_x_y_arrays(right_cones)
