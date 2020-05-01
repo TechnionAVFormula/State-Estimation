@@ -2,24 +2,8 @@
 from SystemRunnerPart.StateEstClient import StateEstClient
 
 
-# Import our precious sub-functions and objects:
-from OrderCones.orderConesMain import orderCones  # for path planning
-from KalmanFilter.EKF_Slam_Class import (
-    Kalman,
-)  # For smart Localization using a kalman filter
-from class_defs.GPSOneShot import GPSOneShot
-
-
-# ConeMap:
-from ConeMapping.ConeMap_CumulativeClustering import ConeMap_CumulativeClustering
-from ConeMapping.ConeMap_Naive import ConeMap_Naive
-
-# Plot and Visualizations:
-from class_defs.StateEstCompPlot import CompPlot  # for plotting
-import SystemRunnerPart.StateEst_Dash as StateEst_DashBoard
-
 ## import depanding on running state / configuration state:
-from config import CONFIG, ConfigEnum, IS_DEBUG_MODE
+from config import CONFIG, ConfigEnum, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING
 
 if (CONFIG == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
@@ -29,6 +13,25 @@ elif CONFIG == ConfigEnum.LOCAL_TEST:
     from pyFormulaClientNoNvidia.MessageDeque import NoFormulaMessages
 else:
     raise NameError("User Should Choose Configuration from config.py")
+
+
+# Import our precious sub-functions and objects:
+from OrderCones.orderConesMain import orderCones  # for path planning
+from KalmanFilter.EKF_Slam_Class import Kalman  # For smart Localization using a kalman filter
+from class_defs.GPSOneShot import GPSOneShot
+
+
+# ConeMap:
+if IS_CONE_MAP_WITH_CLUSTERING:
+    from ConeMapping.ConeMap_CumulativeClustering import ConeMap_CumulativeClustering as ConeMap
+else:
+    from ConeMapping.ConeMap_Naive import ConeMap_Naive as ConeMap
+
+# Plot and Visualizations:
+from class_defs.StateEstCompPlot import CompPlot  # for plotting
+import SystemRunnerPart.StateEst_Dash as StateEst_DashBoard
+
+
 
 
 # for showing messages:
@@ -48,11 +51,8 @@ import numpy as np
 
 from enum import Enum, auto
 
-
-class StateMessage(Enum):
-    NO_MESSAGE = auto()
-    PREDICTION_MSG = auto()
-    CORRECTION_MSG = auto()
+if IS_TIME_CODE_WITH_TIMER:
+    from timeit import default_timer as timer
 
 
 YELLOW = messages.perception.Yellow
@@ -64,18 +64,16 @@ ORANGE_SMALL = messages.perception.OrangeSmall
 class State:
     def __init__(self):
         # DEBUG:
-        self.is_debug_mode =  False # IS_DEBUG_MODE
         self.is_kalman_filter = True
         self.is_compare2ground_truth = True
         self.is_matplotlib = False  # Reduces running speed sagnificantly when True
         self.is_plotly = True
-        self.is_order_cones = False
+        self.is_order_cones = True
         # client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
         # Cone map:
-        # self._cone_map = ConeMap_CumulativeClustering()   #using clustering
-        self._cone_map = ConeMap_Naive()  # simple version
+        self._cone_map = ConeMap()  # simple version
         self._ordered_cones = {"left": np.array([]), "right": np.array([])}
         # Localization of car (Kalman Filter):
         self._car_state = (
@@ -154,10 +152,11 @@ class State:
         """Parse Data and time"""
         cone_map = messages.perception.ConeMap()
         cone_msg.data.Unpack(cone_map)
-        if self.is_debug_mode:
+        if IS_DEBUG_MODE:
             print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
-        if self.is_debug_mode:
+        '''ConeMap: '''
+        if IS_TIME_CODE_WITH_TIMER:
             cluster_start = timer()
 
         cone_array = np.array([])
@@ -167,19 +166,17 @@ class State:
             cone_array = np.append(cone_array, state_cone)
         self._cone_map.insert_new_points(cone_array)
 
-        if self.is_debug_mode:
+        if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
 
-        if self.is_debug_mode:
+        ''''Order Cones: '''
+        if IS_TIME_CODE_WITH_TIMER:
             order_start = timer()
 
-        ## Order Cones:
         if self.is_order_cones:
-            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones(
-                self._cone_map.get_all_samples(), self._car_state
-            )
+            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones(self._cone_map.get_all_samples(), self._car_state)
 
-        if self.is_debug_mode:
+        if IS_TIME_CODE_WITH_TIMER:
             print(f"ordering took {timer() - order_start} ms")
 
 
@@ -193,7 +190,7 @@ class State:
         time_in_milisec = gps_msg.header.timestamp.ToMilliseconds()
 
         """Process:"""
-        if self.is_debug_mode:
+        if IS_DEBUG_MODE:
             print(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
 
         if self.is_kalman_filter:
@@ -378,7 +375,7 @@ class State:
         data = self.create_formula_state_msg()
 
         # print message for debugging:
-        if self.is_debug_mode:
+        if IS_DEBUG_MODE:
             print_proto_message(data)
 
         # send message:
@@ -395,7 +392,7 @@ class State:
                 StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
 
     def act_on_no_message(self, source_str):
-        if self.is_debug_mode:
+        if IS_DEBUG_MODE:
             print(f"No {source_str:10} message")
 
     # V===============================================V Run: V===============================================V #
@@ -478,9 +475,7 @@ def shutdown(a, b):
 
 def print_proto_message(data):
     # print message
-    msg_dict = proto_format.MessageToDict(
-        data, including_default_value_fields=True, preserving_proto_field_name=True
-    )
+    msg_dict = proto_format.MessageToDict(data, including_default_value_fields=True, preserving_proto_field_name=True)
     print(json.dumps(msg_dict, indent=2))
 
 

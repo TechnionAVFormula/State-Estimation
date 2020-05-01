@@ -18,3 +18,5 @@ OUT_MESSAGE_FILE = 'Messages/state.messages'
 
 ## Choose if to print in debug mode:
 IS_DEBUG_MODE = True
+IS_TIME_CODE_WITH_TIMER = True
+IS_CONE_MAP_WITH_CLUSTERING = False

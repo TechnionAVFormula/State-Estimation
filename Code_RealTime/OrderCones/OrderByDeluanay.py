@@ -48,7 +48,7 @@ def orderByDeluanay(Cones, CarState):
 	coneTemplate = copy.deepcopy(Cones[0])
 	numCones = np.empty([len(Cones), CONEPARAMETERS])
 	numCar = [CarState.position.x ,CarState.position.y]
-	numVel = [CarState.velocity.x ,CarState.velocity.y]
+	numVel = [math.cos(CarState.theta) ,math.sin(CarState.theta)]
 	for i in range(nCones):
 		color = 0
 		if Cones[i].type == YELLOW:
