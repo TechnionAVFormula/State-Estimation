@@ -22,10 +22,10 @@ else:
     raise NameError('User Should Choose Configuration from config.py')
 
 # Get proper Enum:
-YELLOW = messages.perception.Yellow
-BLUE = messages.perception.Blue
-ORANGE = messages.perception.OrangeBig
-ORANGE_SMALL = messages.perception.OrangeSmall
+YELLOW 		 = messages.perception.Yellow
+BLUE 		 = messages.perception.Blue
+ORANGE 		 = messages.perception.OrangeBig
+ORANGE_SMALL = messages.perception.Orange
 
 FAKECONE = -10
 

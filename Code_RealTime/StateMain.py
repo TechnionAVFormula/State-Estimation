@@ -55,10 +55,10 @@ if IS_TIME_CODE_WITH_TIMER:
     from timeit import default_timer as timer
 
 
-YELLOW = messages.perception.Yellow
-BLUE = messages.perception.Blue
-ORANGE_BIG = messages.perception.OrangeBig
-ORANGE_SMALL = messages.perception.OrangeSmall
+YELLOW      = messages.perception.Yellow
+BLUE        = messages.perception.Blue
+ORANGE_BIG  = messages.perception.OrangeBig
+ORANGE_SMALL= messages.perception.Orange
 
 
 class State:

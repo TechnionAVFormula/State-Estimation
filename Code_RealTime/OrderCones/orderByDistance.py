@@ -21,7 +21,7 @@ Function takes orders cones by distance to car
 YELLOW 		= messages.perception.Yellow
 BLUE   		= messages.perception.Blue
 ORANGE_BIG  = messages.perception.OrangeBig
-ORANGE_SMALL= messages.perception.OrangeSmall
+ORANGE_SMALL= messages.perception.Orange
 
 
 class OrderByDis:

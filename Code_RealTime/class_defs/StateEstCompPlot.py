@@ -28,7 +28,7 @@ UNKOWN_TYPE = messages.perception.ConeType.UnknownType
 YELLOW      = messages.perception.ConeType.Yellow
 BLUE        = messages.perception.ConeType.Blue
 ORANGE_BIG  = messages.perception.ConeType.OrangeBig 
-ORANGE_SMALL= messages.perception.ConeType.OrangeSmall 
+ORANGE_SMALL= messages.perception.ConeType.Orange
 
 
 IS_GRID_ON = False
