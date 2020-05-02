@@ -16,13 +16,13 @@ import tkinter as tk
 
 def orderCones(coneMap, carState  ):
 	#to order cones by distance
-	'''
-    orderClass = OrderByDis(coneMap , carState)
-    bluePoints , yellowPoints = orderClass.orderByDis()
-	'''
+
+	orderClass = OrderByDis(coneMap , carState)
+	bluePoints , yellowPoints = orderClass.orderByDis()
+
 
 	#to order cones by delaunay
-	bluePoints , yellowPoints , blueLost ,yellowLost = orderByDeluanay(coneMap, carState)
+	#bluePoints , yellowPoints , blueLost ,yellowLost = orderByDeluanay(coneMap, carState)
 	#printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState)
 	return bluePoints  ,yellowPoints
 	

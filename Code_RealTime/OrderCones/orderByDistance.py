@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 ## import depanding on running state / configuration state:
 from config import CONFIG , ConfigEnum
@@ -32,21 +33,33 @@ class OrderByDis:
 
 	def takeDistance(self, elem):
 		return math.sqrt(math.pow(elem.x-self.carState.x,2) + math.pow(elem.y-self.carState.y,2))
-
 	def orderByDis(self):
-		bluePoints = []
-		yellowPoints = []
-		otherPoints = []
+
+		nblue = 0
+		nyellow = 0
 		for cone in self.cones:
 			if cone.type == BLUE:
-				bluePoints.append(cone)
+				nblue += 1
 			elif cone.type == YELLOW:
-				yellowPoints.append(cone)
-			else:
-				otherPoints.append(cone)
+				nyellow += 1
+
+		bluePoints = np.empty([nblue, 2], dtype=(object))
+		yellowPoints = np.empty([nyellow, 2], dtype=(object))
+
+		nblue = 0
+		nyellow = 0
+		for cone in self.cones:
+			if cone.type == BLUE:
+				bluePoints[nblue][0] = cone
+				bluePoints[nblue][1] = math.sqrt(math.pow(cone.position.x-self.carState.position.x,2) + math.pow(cone.position.y-self.carState.position.y,2))
+				nblue += 1
+			elif cone.type == YELLOW:
+				yellowPoints[nyellow][0] = cone
+				yellowPoints[nyellow][1] = math.sqrt(math.pow(cone.position.x-self.carState.position.x,2) + math.pow(cone.position.y-self.carState.position.y,2))
+				nyellow += 1
 			
-		bluePoints.sort(key=self.takeDistance)
-		yellowPoints.sort(key=self.takeDistance)
+		returnBlue = bluePoints[bluePoints[:,1].argsort()]
+		returnYellow = yellowPoints[yellowPoints[:,1].argsort()]
 		
-		return bluePoints , yellowPoints
+		return returnBlue[:,0] , returnYellow[:,0]
 
