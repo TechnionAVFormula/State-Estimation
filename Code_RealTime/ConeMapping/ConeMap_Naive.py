@@ -9,16 +9,24 @@ current_path  = os.path.dirname(__file__)
 current_path = Path(current_path)
 relative_path = current_path.parent
 sys.path.append(str(relative_path))
+relative_path = current_path.parent
+sys.path.append(str(relative_path))
 
 from .ConeMap_Base import ConeMap_Base
-
+from config import COMULATIVE_CONE_MAP
 
 class ConeMap_Naive(ConeMap_Base):
     def __init__(self):
         super().__init__()
         self._epsilon = 2 # meters of error around cone for a new cone
+        self._got_cones = False
 
     def insert_new_points(  self  , cone_array   ):
+        ## Avoid adding more cones if that's what the user chose.
+        if (not COMULATIVE_CONE_MAP) and (self._got_cones):
+            return        
+        self._got_cones = True
+        ## Add the cones:
         for cone in cone_array:
             if not self._cone_exist(cone):
                 self._cone_samples = np.append( self._cone_samples , cone )

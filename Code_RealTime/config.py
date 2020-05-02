@@ -21,3 +21,4 @@ IS_DEBUG_MODE = False
 IS_TIME_CODE_WITH_TIMER = False
 IS_CONE_MAP_WITH_CLUSTERING = False
 SHOW_REALTIME_DASHBOARD = False
+COMULATIVE_CONE_MAP = True    # False - will shut dwon the option to sample more cones. Only the first cone message will count
