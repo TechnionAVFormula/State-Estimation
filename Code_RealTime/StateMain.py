@@ -349,6 +349,9 @@ class State:
         # finish estimation:
         data.distance_to_finish, is_found = self._calc_distance_to_finish()
 
+        # message type:
+        data.message_type = messages.state_est.FormulaStateMessageType.prediction_and_correction
+
         # Cones:
         if self.is_order_cones:
             for cone in self._ordered_cones["right"]:
