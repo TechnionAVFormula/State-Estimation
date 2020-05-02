@@ -3,7 +3,7 @@ from SystemRunnerPart.StateEstClient import StateEstClient
 
 
 ## import depanding on running state / configuration state:
-from config import CONFIG, ConfigEnum, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING
+from config import CONFIG, ConfigEnum, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
 
 if (CONFIG == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import messages
@@ -65,10 +65,10 @@ class State:
     def __init__(self):
         # DEBUG:
         self.is_kalman_filter = True
-        self.is_compare2ground_truth = True
+        self.is_compare2ground_truth = False
         self.is_matplotlib = False  # Reduces running speed sagnificantly when True
-        self.is_plotly = True
-        self.is_order_cones = False
+        self.is_plotly = SHOW_REALTIME_DASHBOARD
+        self.is_order_cones = True
         # client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
@@ -81,7 +81,7 @@ class State:
         )  # keeping our most recent known state here
         if self.is_kalman_filter:
             self._GPSOneShot = GPSOneShot()
-            self._last_kalman_time_milisec = 0
+            self._last_kalman_time_milisec = None
             self._kalman_filter = Kalman()
             self._car_state_predicted = messages.state_est.CarState()  # prediction only
 
@@ -202,6 +202,10 @@ class State:
             self._car_state.position.y = y
 
     def process_ground_truth_message_memory(self, gt_msg):
+
+        if not self.is_compare2ground_truth:
+            return
+
         """unpack data and time:"""
         gt_data = messages.ground_truth.GroundTruth()
         gt_msg.data.Unpack(gt_data)
@@ -248,12 +252,14 @@ class State:
         time_in_milisec = car_data_msg.header.timestamp.ToMilliseconds()
 
         """ Assert that frequency of update is correct: """
-        delta_t_milisec = (
-            time_in_milisec - self._last_kalman_time_milisec
-        )  # calc time since last prediction and update new time:
-        if not self.check_correct_frequency(delta_t_milisec):
+        if self._last_kalman_time_milisec == None:  #first timee we're here
+            self._last_kalman_time_milisec = time_in_milisec
             return
-        self._last_kalman_time_milisec = time_in_milisec
+        else:
+            delta_t_milisec = (time_in_milisec - self._last_kalman_time_milisec)  # calc time since last prediction and update new time:
+            if not self.check_correct_frequency(delta_t_milisec):
+                return
+            self._last_kalman_time_milisec = time_in_milisec
 
 
         if self.is_kalman_filter:

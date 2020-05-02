@@ -31,7 +31,7 @@ def send_StateEst_DashBoard_with_GroundTruth(msg ,CarTruth):
     msg.data.Unpack(data)
     time_in_milisec = msg.header.timestamp.ToMilliseconds()
     
-    plotly_state(data , CarTruth ,  time=time_in_milisec)
+    plotly_state(data , time=time_in_milisec , CarTruth=CarTruth)
 
 
 def send_StateEst_DashBoard_msg(msg):
@@ -65,7 +65,19 @@ def cones_to_x_y_arrays(cone_array):
     return x_array , y_array
 
 
-def plotly_state(data , CarTruth, time=0):
+def plotly_state(data , time=0 , **kargs):
+
+
+    if 'CarTruth' in kargs:
+        is_with_car_truth = True
+        CarTruth = kargs['CarTruth']
+        ## Parse GroundTruth"
+        true_x = CarTruth["x"]
+        true_y = CarTruth["y"]
+        true_theta = CarTruth["theta"]
+    else:
+        is_with_car_truth = False
+
 
     ## Parse Data:
     right_cones = data.right_bound_cones
@@ -79,24 +91,22 @@ def plotly_state(data , CarTruth, time=0):
     car_pos_deviation_y = data.current_state.position_deviation.y
 
 
-    ## Parse GroundTruth"
-    true_x = CarTruth["x"]
-    true_y = CarTruth["y"]
-    true_theta = CarTruth["theta"]
-
-
     x_arr_yellow , y_arr_yellow = cones_to_x_y_arrays(right_cones)
     color_arr_yellow = ['yellow']  * len(x_arr_yellow)
     x_arr_blue , y_arr_blue = cones_to_x_y_arrays(left_cones)
     color_arr_blue = ['blue'] * len(x_arr_blue)
 
     if len(x_arr_yellow)==0:
-        print(f"plotly::no cones")
+        print(f"DashBoard::StateEst::no cones")
 
-    x_arr = x_arr_yellow + x_arr_blue + [car_x] + [true_x]
-    y_arr = y_arr_yellow + y_arr_blue + [car_y] + [true_y]
-    c_arr = color_arr_yellow + color_arr_blue + ['red']  + ['orange']
-
+    if is_with_car_truth:
+        x_arr = x_arr_yellow     + x_arr_blue     + [car_x]  + [true_x]
+        y_arr = y_arr_yellow     + y_arr_blue     + [car_y]  + [true_y]
+        c_arr = color_arr_yellow + color_arr_blue + ['red']  + ['orange']
+    else:
+        x_arr = x_arr_yellow      + x_arr_blue     + [car_x] 
+        y_arr = y_arr_yellow      + y_arr_blue     + [car_y] 
+        c_arr = color_arr_yellow  + color_arr_blue + ['red']  
 
 
     ## Plot:
