@@ -263,7 +263,7 @@ class State:
 
 
         if self.is_kalman_filter:
-            
+
             """ Prediction: """
             delta = car_data.car_measurments.steering_angle  # steering angle
             acceleration_long = car_data.imu_sensor.imu_measurments.acceleration.x
@@ -294,7 +294,7 @@ class State:
                 y = None
                 is_exist_GPS = False
 
-            data_for_correction["gyro"] = car_data.imu_sensor.imu_measurments.angular_velocity.z   
+            data_for_correction["gyro"] = car_data.imu_sensor.imu_measurments.angular_velocity.z
             data_for_correction["is_exist_GPS"] = is_exist_GPS
             data_for_correction["GPS_x"] = x
             data_for_correction["GPS_y"] = y
@@ -408,7 +408,7 @@ class State:
     def act_on_error(self , e, source_str):
         error_msg = e.args[0]
         msg =  f" Error at {source_str:10}  : {error_msg}"
-        self.logger.debug(msg)
+        self.logger.info(msg)
 
 
     # V===============================================V Run: V===============================================V #
