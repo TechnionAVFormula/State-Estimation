@@ -15,11 +15,11 @@ else:
     raise NameError("User Should Choose Configuration from config.py")
 
 
-# Import our precious sub-functions and objects:
+
 from OrderCones.orderConesMain import orderCones  # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman  # For smart Localization using a kalman filter
 from class_defs.GPSOneShot import GPSOneShot
-
+from SystemRunnerPart.Logger import InitLogger
 
 # ConeMap:
 if IS_CONE_MAP_WITH_CLUSTERING:
@@ -63,12 +63,14 @@ ORANGE_SMALL= messages.perception.Orange
 
 class State:
     def __init__(self):
-        # DEBUG:
+        # Development Flag:
         self.is_kalman_filter = True
         self.is_compare2ground_truth = False
         self.is_matplotlib = False  # Reduces running speed sagnificantly when True
         self.is_plotly = SHOW_REALTIME_DASHBOARD
         self.is_order_cones = True
+        # logger:
+        self.logger = InitLogger()
         # client:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
@@ -76,9 +78,7 @@ class State:
         self._cone_map = ConeMap()  # simple version
         self._ordered_cones = {"left": np.array([]), "right": np.array([])}
         # Localization of car (Kalman Filter):
-        self._car_state = (
-            messages.state_est.CarState()
-        )  # keeping our most recent known state here
+        self._car_state = messages.state_est.CarState()  # keeping our most recent known state here
         if self.is_kalman_filter:
             self._GPSOneShot = GPSOneShot()
             self._last_kalman_time_milisec = None
@@ -115,9 +115,8 @@ class State:
         state_cone.alpha = math.atan2(perception_cone.y, perception_cone.x)
 
         ## convert to our xNorth yEast:
-        theta_total = (
-            self._car_state.theta + state_cone.alpha
-        )  #! here we depand on _car_state being recent and relevant
+        theta_total = (self._car_state.theta + state_cone.alpha)  #! here we depand on _car_state being recent and relevant
+
         # distance of cone from car, in our axis
         delta_x = state_cone.r * math.cos(theta_total)
         delta_y = state_cone.r * math.sin(theta_total)
@@ -192,7 +191,8 @@ class State:
 
         """Process:"""
         if IS_DEBUG_MODE:
-            print(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
+            self.logger.info(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
+
 
         if self.is_kalman_filter:
             self._GPSOneShot.set_new_data(x, y, time_in_milisec)
@@ -231,7 +231,7 @@ class State:
                     "type": cone.type,
                 }
                 self._cone_truth = np.append(self._cone_truth, tmp_cone)
-            
+
             if self.is_matplotlib:
 
                 self._comp_plot.plot_cones(self._cone_truth)
@@ -402,7 +402,14 @@ class State:
 
     def act_on_no_message(self, source_str):
         if IS_DEBUG_MODE:
-            print(f"No {source_str:10} message")
+            msg =  f" no  {source_str:10}  message"
+            self.logger.info(msg)
+
+    def act_on_error(self , e, source_str):
+        error_msg = e.args[0]
+        msg =  f" Error at {source_str:10}  : {error_msg}"
+        self.logger.debug(msg)
+
 
     # V===============================================V Run: V===============================================V #
     def run(self):
@@ -417,7 +424,7 @@ class State:
             except NoFormulaMessages:
                 self.act_on_no_message("server")
             except Exception as e:
-                print(f"StateMain::Exception: {e}")
+                self.act_on_error(e, "server")
 
             ## GPS:
             try:
@@ -427,7 +434,7 @@ class State:
             except NoFormulaMessages:
                 self.act_on_no_message("GPS")
             except Exception as e:
-                print(f"StateMain::Exception: {e}")
+                self.act_on_error(e, "GPS")
 
             ## car data::
             try:
@@ -437,7 +444,7 @@ class State:
             except NoFormulaMessages:
                 self.act_on_no_message("car data")
             except Exception as e:
-                print(f"StateMain::Exception: {e}")
+                self.act_on_error(e, "car data")
 
             ## Perception:
             try:
@@ -447,7 +454,7 @@ class State:
             except NoFormulaMessages:
                 self.act_on_no_message("cone map")
             except Exception as e:
-                print(f"StateMain::Exception: {e}")
+                self.act_on_error(e, "cone map")
 
             ## Ground Truth:
             try:
@@ -457,7 +464,7 @@ class State:
             except NoFormulaMessages:
                 self.act_on_no_message("ground truth")
             except Exception as e:
-                print(f"StateMain::Exception: {e}")
+                self.act_on_error(e, "ground truth")
 
     # ^===============================================^ Run: ^===============================================^ #
 
