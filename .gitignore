@@ -4,3 +4,4 @@ Code_RealTime/State Estimation Dash-Board.html
 Code_RealTime/Messages/state.messages
 
 */__pycache__
+.vscode/settings.json
