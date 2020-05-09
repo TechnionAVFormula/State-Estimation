@@ -31,7 +31,7 @@ import os
 # Reverse X-Y Axes?
 # Simulation uses:  X-east   Y-north
 # State-Estimation uses the navigation concensus of xNorth yEast:
-IS_xNorth_yEast = False
+IS_xNorth_yEast = True
 
 #enum:
 BLUE    = messages.perception.Blue
@@ -41,11 +41,12 @@ YELLOW  = messages.perception.Yellow
 Values to be used:
 '''
 PRINT_ON_MSG = True
-INPUT_MAT_NAME =  'Test_04.mat'
+INPUT_MAT_NAME =  'Test_05.mat'
 OUT_FILE_NAME = 'fromSimulation.messages'
 PATH2READ_SIMULATION_RESULTS_M = "C:\\Users\\NGBig\\Documents\\GitHub\\State-Estimation\\Code_Offline\\SimulationTests\\read_simulation_results.m"
 
 perception_sampling_time_milisec = (1/30) * 1000   # in [m sec]   for 30 Hz Fs
+gps_sampling_time_milisec = (1/2) * 1000 # in [m sec]  for 2 Hz Fs
 
 def flip_x_y( Cones , Measurements , Ground_Truth ):
     
@@ -90,14 +91,23 @@ def flip_x_y( Cones , Measurements , Ground_Truth ):
         old_theta   = Ground_Truth.theta[test_ind][0]
         Ground_Truth.x[test_ind][0]     = old_y     
         Ground_Truth.y[test_ind][0]     = old_x     
-        Ground_Truth.theta[test_ind][0] = old_theta  # no change that I can think about 
+        Ground_Truth.theta[test_ind][0] = math.pi - old_theta # theta grows from x to y
 
     ## GPS:
     for test_ind in range(num['tests'] ):
-        old_x = Measurements.GPS_x[test_ind][0]
-        old_y = Measurements.GPS_y[test_ind][0]
-        Measurements.GPS_x[test_ind][0] = old_y 
-        Measurements.GPS_y[test_ind][0] = old_x
+        time_in_milisec = int( ( Ground_Truth.Time[test_ind][0] )*1000 )
+        gps_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.GPS_Time ) 
+        if is_exist:
+            old_x = Measurements.GPS_x[gps_ind][0]
+            old_y = Measurements.GPS_y[gps_ind][0]
+            Measurements.GPS_x[gps_ind][0] = old_y 
+            Measurements.GPS_y[gps_ind][0] = old_x
+
+    ## Car measurements:
+    for test_ind in range(num['tests']):
+        old_omega = Measurements.omega[ test_ind ][0]
+        # positive omega (theta dot ) is to the right (intrinsic). positve from new x to new y:
+        Measurements.omega[ test_ind ][0] = -old_omega   
 
     return Cones , Measurements , Ground_Truth 
 
@@ -186,7 +196,7 @@ def main(output_file_name , input_mat_name):
     num['left_cones']  = int(round(  oc.size(Cones.LeftConesSeen)[0][1]  ))
     num['right_cones'] = int(round(  oc.size(Cones.RightConesSeen)[0][1] ))
 
-
+    last_GPS_sample_milisec = 0
     last_perception_sample_milisec = 0
     # for each time stamp:
     # vvvvvvvvvvvvvvvvvvvvvvvvvvv #
@@ -224,18 +234,21 @@ def main(output_file_name , input_mat_name):
         '''
         GPS Measurements:
         '''
-        gps_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.GPS_Time ) 
-        if is_exist:
-            x = Measurements.GPS_x[gps_ind][0]
-            y = Measurements.GPS_y[gps_ind][0]
-            z = 0
-            if PRINT_ON_MSG:
-                print(f"GPS  msg on index {test_ind:5} ; x={x:5.2f} , y={y:5.2f}")
-            #create message and send it (to file):
-            msg = create_gps_message(x,y,z)
-            msg.header.id = test_ind
-            msg.header.timestamp.FromMilliseconds( time_in_milisec )
-            simulation_conn.send_message(msg)
+        if time_in_milisec >= last_GPS_sample_milisec + gps_sampling_time_milisec:
+            last_GPS_sample_milisec=time_in_milisec
+
+            gps_ind , is_exist = find_measurment_at_time( time_in_milisec , Measurements.GPS_Time ) 
+            if is_exist:
+                x = Measurements.GPS_x[gps_ind][0]
+                y = Measurements.GPS_y[gps_ind][0]
+                z = 0
+                if PRINT_ON_MSG:
+                    print(f"GPS  msg on index {test_ind:5} ; x={x:5.2f} , y={y:5.2f}")
+                #create message and send it (to file):
+                msg = create_gps_message(x,y,z)
+                msg.header.id = test_ind
+                msg.header.timestamp.FromMilliseconds( time_in_milisec )
+                simulation_conn.send_message(msg)
 
 
         '''

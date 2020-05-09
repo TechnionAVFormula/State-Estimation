@@ -90,29 +90,33 @@ def create_ground_truth_message( car_position , CarMeasurments , IMUMeasurments 
     gt_data = messages.ground_truth.GroundTruth()
 
     if (car_position == None):
-        gt_data.has_position_truth = False
+        pass
+        gt_data.state_ground_truth.has_position_truth = False
     else:
-        gt_data.has_position_truth = True
-        gt_data.position.x = car_position[0]
-        gt_data.position.y = car_position[1]
-        gt_data.position.z = 0
+        # gt_data.has_position_truth = True
+        gt_data.state_ground_truth.position.x = car_position[0]
+        gt_data.state_ground_truth.position.y = car_position[1]
+        gt_data.state_ground_truth.position.z = 0
 
     if CarMeasurments == None:
-        gt_data.has_car_measurments_truth = False
+        pass
+        gt_data.state_ground_truth.has_car_measurments_truth = False
     else:
-        gt_data.has_car_measurments_truth = True
-        gt_data.car_measurments.CopyFrom(CarMeasurments)
+        gt_data.state_ground_truth.has_car_measurments_truth = True
+        gt_data.state_ground_truth.car_measurments.CopyFrom(CarMeasurments)
     
     if IMUMeasurments == None:
-        gt_data.has_imu_measurments_truth = False
+        pass
+        gt_data.state_ground_truth.has_imu_measurments_truth = False
     else:
-        gt_data.has_imu_measurments_truth = True
-        gt_data.imu_measurments.CopyFrom(IMUMeasurments)
+        gt_data.state_ground_truth.has_imu_measurments_truth = True
+        gt_data.state_ground_truth.imu_measurments.CopyFrom(IMUMeasurments)
 
     if (cone_array == None):
-        gt_data.has_cones_truth  = False
+        pass
+        gt_data.state_ground_truth.has_cones_truth  = False
     else:
-        gt_data.has_cones_truth  = True
+        gt_data.state_ground_truth.has_cones_truth  = True
         for cone_data in cone_array:
             cone = messages.state_est.StateCone()
             cone.position.x = cone_data['x']
@@ -120,7 +124,7 @@ def create_ground_truth_message( car_position , CarMeasurments , IMUMeasurments 
             cone.cone_id = cone_data['cone_id']
             cone.type = cone_data['type']
             cone.position_deviation = 0
-            gt_data.cones  .append(cone)
+            gt_data.state_ground_truth.cones  .append(cone)
 
     gt_msg = messages.common.Message()
     gt_msg.data.Pack(gt_data) 

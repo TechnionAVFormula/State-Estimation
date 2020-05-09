@@ -24,5 +24,5 @@ MatOut.Cones.LeftConesSeen=simout.Cones.LeftConesSeen.Data;
 MatOut.Cones.RightConesSeen=simout.Cones.RightConesSeen.Data;
 
 
-save('simout' ,'MatOut');
+save('MatOut' ,'MatOut');
 % save('simout' , "MatOut.Cones" , "MatOut.Measurements"  , "MatOut.Ground_Truth" )

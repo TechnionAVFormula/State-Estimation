@@ -1,5 +1,5 @@
 # Client :
-from SystemRunnerPart.StateEstClient import StateEstClient
+from StateEstSR.StateEstClient import StateEstClient
 
 
 ## import depanding on running state / configuration state:
@@ -19,7 +19,7 @@ else:
 from OrderCones.orderConesMain import orderCones  # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman  # For smart Localization using a kalman filter
 from class_defs.GPSOneShot import GPSOneShot
-from SystemRunnerPart.Logger import InitLogger
+from StateEstSR.Logger import InitLogger
 
 # ConeMap:
 if IS_CONE_MAP_WITH_CLUSTERING:
@@ -29,7 +29,7 @@ else:
 
 # Plot and Visualizations:
 from class_defs.StateEstCompPlot import CompPlot  # for plotting
-import SystemRunnerPart.StateEst_Dash as StateEst_DashBoard
+import StateEstSR.StateEst_Dash as StateEst_DashBoard
 
 
 
@@ -39,7 +39,7 @@ from pprint import pprint
 import google.protobuf.json_format as proto_format
 
 # from SystemRunnerPart.print_messages_file import print_messages_file
-from SystemRunnerPart.print_messages_file import save_as_json
+from StateEstSR.print_messages_file import save_as_json
 import json
 
 
@@ -83,7 +83,6 @@ class State:
             self._GPSOneShot = GPSOneShot()
             self._last_kalman_time_milisec = None
             self._kalman_filter = Kalman()
-            self._car_state_predicted = messages.state_est.CarState()  # prediction only
 
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.array([])

@@ -1,5 +1,4 @@
 import logging
-import logging.handlers as handlers
 
 def InitLogger():
     logger = logging.getLogger() # Use default logger (i.e. logging.info/logging.debug)
@@ -11,7 +10,7 @@ def InitLogger():
 
     # Create log file handler and set level to DEBUG
     log_file_name = 'log.log'
-    file_handler = handlers.WatchedFileHandler(log_file_name, 'w')
+    file_handler = logging.FileHandler(log_file_name , 'w')
     formatter = logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s") # Format for the file log lines
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.DEBUG)

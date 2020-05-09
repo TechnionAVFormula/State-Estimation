@@ -1,6 +1,9 @@
-import plotly.graph_objects as pgo
 import plotly
+import plotly.graph_objects as pgo
+import plotly.figure_factory as pff
 import codecs
+
+import math
 
 ## for relative import:
 import os
@@ -24,6 +27,7 @@ else:
     raise NameError('User Should Choose Configuration from config.py')
 
 is_first_call = True
+IS_Xnorth_Yeast = True
 
 
 def send_StateEst_DashBoard_with_GroundTruth(msg ,CarTruth): 
@@ -49,11 +53,18 @@ def get_update(path_str):
 
 
 def set_fig_appearance(fig):
-    fig.update_layout(
-    title='State Estimation Dash-Board',
-    xaxis_title='xNorth [m]',
-    yaxis_title='yEast [m]'
-    )
+    if IS_Xnorth_Yeast:
+        fig.update_layout(
+        title='State Estimation Dash-Board',
+        xaxis_title='yEast [m]',
+        yaxis_title='xNorth [m]'
+        )
+    else:
+        fig.update_layout(
+        title='State Estimation Dash-Board',
+        xaxis_title='xNorth [m]',
+        yaxis_title='yEast [m]'
+        )
     return fig
 
 def cones_to_x_y_arrays(cone_array):
@@ -108,12 +119,19 @@ def plotly_state(data , time=0 , **kargs):
         y_arr = y_arr_yellow      + y_arr_blue     + [car_y] 
         c_arr = color_arr_yellow  + color_arr_blue + ['red']  
 
+    ## Show theta as arrow:
+    # fig = pff.create_quiver(car_x, car_y , math.cos(car_theta) , math.sin(car_theta)) 
 
     ## Plot:
-    scatter = pgo.Scatter( x=x_arr , y=y_arr ,  mode='markers' ,
-        marker=dict( color=c_arr , size=20)
-    )
-    # color='rgb(140,140,0)'
+    if IS_Xnorth_Yeast:
+        scatter = pgo.Scatter( x=y_arr , y=x_arr ,  mode='markers' ,
+            marker=dict( color=c_arr , size=20)
+        )
+    else:
+        scatter = pgo.Scatter( x=x_arr , y=y_arr ,  mode='markers' ,
+            marker=dict( color=c_arr , size=20)
+        )
+        # color='rgb(140,140,0)'
 
 
 
