@@ -25,7 +25,7 @@ else:
 YELLOW 		 = messages.perception.Yellow
 BLUE 		 = messages.perception.Blue
 ORANGE 		 = messages.perception.OrangeBig
-ORANGE_SMALL = messages.perception.Orange
+#ORANGE_SMALL = messages.perception.Orange
 
 FAKECONE = -10
 
@@ -56,7 +56,7 @@ def orderByDeluanay(Cones, CarState):
 			numCones[i][3] = i
 			numCones[i][4],numCones[i][5],numCones[i][6] = Cones[i].alpha, Cones[i].r, Cones[i].position_deviation
 		elif Cones[i].type == BLUE:
-			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].position.x, Cones[i].position.y, 98
+			numCones[i][0], numCones[i][1], numCones[i][2] = Cones[i].position.x,Cones[i].position.y, 98
 			numCones[i][3] = i
 			numCones[i][4],numCones[i][5],numCones[i][6] = Cones[i].alpha, Cones[i].r, Cones[i].position_deviation
 
@@ -366,6 +366,8 @@ class MapTrack:
 				elif int(self.SaveCones[i][2]) == 121:
 					self.LostYellow[yCounter] = self.SaveCones[i]
 					yCounter += 1
+		self.LostBlue = self.LostBlue[(self.LostBlue[:, 2] != 0), :]
+		self.LostYellow = self.LostYellow[(self.LostYellow[:, 2] != 0), :]
 		
 		
 		
@@ -402,26 +404,6 @@ def TriOne(DT,ConesColors,ID,CarDir,ColorCostWeight):
 						 np.any(DT.simplices==NewCrossEdge[1],axis=1)) #find IDs that are connected to edge
 	NewID=np.squeeze(np.setdiff1d(Attachments,ID)) #NewID - New Triangle
 	return NewID,Newu,NewCrossEdge
-	
-def RecursiveEdgeCost(V,P,TriInCenter,edge,edges,Dir,delaunay,level,ColorCostWeight,maxlevel = 5):
-	if level == maxlevel:
-		return EdgeCost(edge)
-
-	#J2=EdgeCost(TriInCenter,P[edges[1,:],:],Dir,ColorCostWeight)
-	#print (J2)
-	
-	#get next triangle for edge1
-	edge1dir = OutFacingNormal(P[edges[0,:],:2],TriInCenter)
-	
-	
-	#get next triangle for edge2
-	
-	'''edge1cost=RecursiveEdgeCost(edge1,edge11,edge12,edge1dir,delaunay,level+1,maxlevel)
-	edge2cost=RecursiveEdgeCost(edge1,edge11,edge12,edge1dir,delaunay,level+1,maxlevel)
-	CurrentEdge = (CurrentEdge + min([edge1cost,edge2cost]))/2
-		
-	return CurrentEdge'''
-	return 0
 
 def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
 	'''
@@ -454,7 +436,6 @@ def FindNextTriangle(DT,ConesColors,ID,Dir,CrossEdge,ColorCostWeight):
 						np.any(EdgesV==CrossEdge[1],axis=1)),:] #find the two edges to calculate for (not going backwards).
 	J1=EdgeCost(IC,P[EdgesInd[0,:],:],Dir,ColorCostWeight) #calculate costs
 	J2=EdgeCost(IC,P[EdgesInd[1,:],:],Dir,ColorCostWeight)
-	RecursiveEdgeCost(V,P,IC,CrossEdge,EdgesInd,Dir,DT,0,ColorCostWeight)
 	J=np.hstack([J1,J2]); MinCost=np.min(J); JminInd=np.argmin(J) #find Edge to cross by row index in Edges
 	NewCrossEdge=V[EdgesInd[JminInd,:]] #obtain Edge Vertices to cross (point indcies [V1,V2])
 	NewDir=OutFacingNormal(P[EdgesInd[JminInd,:],:2],IC) #calculate normal to cross edge
@@ -506,8 +487,8 @@ def EdgeCost(TriInCenter,EdgeCones,u,ColorCostWeight):
 	J=0 #initalize
 	if EdgeCones[0,2]==EdgeCones[1,2]: #if the same color
 		J=J+1
-	elif leftPoint[2] == 121:
-		J=J+1.9
+	#elif leftPoint[2] == 121:
+	#	J=J+1.9
 	else: #not the same color
 		J=J-1
 	J=ColorCostWeight*J-np.dot(u,OutFacingNormal(EdgeCones[:,:2],TriInCenter)) #+bad points for difference in direction
