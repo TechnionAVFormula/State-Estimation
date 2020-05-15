@@ -1,19 +1,17 @@
+## For relative imports:
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent
+sys.path.append(str(relativePath))
+
+## classes and enums from our utilities:
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
+from StateEst_Utils.MessagesClass import IMPORT_messages, IMPORT_NoFormulaMessages
+from StateEst_Utils.ConfigEnum import ConfigEnum
+from StateEst_Utils.ConeType import ConeType
+
 # Client :
 from StateEstSR.StateEstClient import StateEstClient
-
-
-## import depanding on running state / configuration state:
-from config import CONFIG, ConfigEnum, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
-
-if (CONFIG == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
-    from pyFormulaClient import messages
-    from pyFormulaClient.MessageDeque import NoFormulaMessages
-elif CONFIG == ConfigEnum.LOCAL_TEST:
-    from pyFormulaClientNoNvidia import messages
-    from pyFormulaClientNoNvidia.MessageDeque import NoFormulaMessages
-else:
-    raise NameError("User Should Choose Configuration from config.py")
-
 
 
 from OrderCones.orderConesMain import orderCones  # for path planning
@@ -55,10 +53,6 @@ if IS_TIME_CODE_WITH_TIMER:
     from timeit import default_timer as timer
 
 
-YELLOW      = messages.perception.Yellow
-BLUE        = messages.perception.Blue
-ORANGE_BIG  = messages.perception.OrangeBig
-ORANGE_SMALL= messages.perception.Orange
 
 
 class State:

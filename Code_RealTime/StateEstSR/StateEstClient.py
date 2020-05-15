@@ -1,5 +1,11 @@
-from config import CONFIG, IN_MESSAGE_FILE, OUT_MESSAGE_FILE
-from config import ConfigEnum
+## For relative imports:
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
+
+from StateEst_Utils.config import ConfigEnum
+from StateEst_Utils.config import CONFIG, IN_MESSAGE_FILE, OUT_MESSAGE_FILE
 
 if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
     from pyFormulaClient import FormulaClient, messages  

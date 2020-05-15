@@ -31,17 +31,6 @@ FAKECONE = -10
 
 CONEPARAMETERS = 7
 
-'''
-orderByDeluanay takes:
-CarState - contains x,y,Vx,Vy
-Cones- array of cones in some format
-
-orderByDeluanay returns:
-returnBlue- array of ordered blue cones in same format as input
-returnYellow - array of ordered yellow cones in same format as input
-returnLostBlue - array of blue cones not chosen to be ordered in same format as input
-returnLostYellow - array of yellow cones not chosen to be ordered in same format as input
-'''
 
 def orderByDeluanay(Cones, CarState):
 	nCones = len(Cones)
