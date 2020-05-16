@@ -6,7 +6,7 @@ sys.path.append(str(relativePath))
 
 ## classes and enums from our utilities:
 from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
-from StateEst_Utils.MessagesClass import IMPORT_messages, IMPORT_NoFormulaMessages
+from StateEst_Utils.MessagesClass import messages, NoFormulaMessages
 from StateEst_Utils.ConfigEnum import ConfigEnum
 from StateEst_Utils.ConeType import ConeType
 
@@ -26,9 +26,9 @@ else:
     from ConeMapping.ConeMap_Naive import ConeMap_Naive as ConeMap
 
 # Plot and Visualizations:
-from class_defs.StateEstCompPlot import CompPlot  # for plotting
-import StateEstSR.StateEst_Dash as StateEst_DashBoard
 
+# from class_defs.StateEstCompPlot import CompPlot  # for plotting
+import StateEstSR.StateEst_Dash as StateEst_DashBoard
 
 
 
@@ -54,13 +54,12 @@ if IS_TIME_CODE_WITH_TIMER:
 
 
 
-
 class State:
     def __init__(self):
         # Development Flag:
         self.is_kalman_filter = True
         self.is_compare2ground_truth = False
-        self.is_matplotlib = False  # Reduces running speed sagnificantly when True
+
         self.is_plotly = SHOW_REALTIME_DASHBOARD
         self.is_order_cones = True
         # logger:
@@ -81,9 +80,6 @@ class State:
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.array([])
             self._cone_truth = np.array([])
-
-        if self.is_matplotlib:
-            self._comp_plot = CompPlot()
 
     def start(self):
         self._client.connect(1)
@@ -225,15 +221,10 @@ class State:
                 }
                 self._cone_truth = np.append(self._cone_truth, tmp_cone)
 
-            if self.is_matplotlib:
-
-                self._comp_plot.plot_cones(self._cone_truth)
-
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.append(self._ground_truth_memory, car_turth)
 
-        if self.is_matplotlib:
-            self._comp_plot.update_car_state(car_turth)
+ 
 
     def check_correct_frequency(self, delta_t_milisec):
         return True

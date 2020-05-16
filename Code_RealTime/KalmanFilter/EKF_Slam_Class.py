@@ -3,25 +3,18 @@ import math as ma
 from numpy.random import randn
 from numpy.linalg import inv, norm
 
-## For relative import:
-import os
-import sys
-from pathlib import Path
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
 
-current_folder_str = os.path.dirname(__file__)
-current_folder_path = Path(current_folder_str)  # make a Path an object out of the path
-relative_folder_path = current_folder_path.parent  # get relative parent
-sys.path.append(str(relative_folder_path))  # add to search path for imports
+## classes and enums from our utilities:
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE 
+from StateEst_Utils.ConfigEnum import ConfigEnum
+from StateEst_Utils.ConeType import ConeType
+from StateEst_Utils.MessagesClass import messages
 
-## import depanding on running state / configuration state:
-from config import CONFIG, ConfigEnum, IS_DEBUG_MODE
-
-if (CONFIG == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
-    from pyFormulaClient import messages
-elif CONFIG == ConfigEnum.LOCAL_TEST:
-    from pyFormulaClientNoNvidia import messages
-else:
-    raise NameError("User Should Choose Configuration from config.py")
 
 
 class Kalman:

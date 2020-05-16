@@ -1,19 +1,19 @@
 import numpy as np
 import math
 
-## for relative path
-import os
-import sys
-from pathlib import Path
-current_path  = os.path.dirname(__file__)
-current_path = Path(current_path)
-relative_path = current_path.parent
-sys.path.append(str(relative_path))
-relative_path = current_path.parent
-sys.path.append(str(relative_path))
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
 
+## classes and enums from our utilities:
+from StateEst_Utils.config import COMULATIVE_CONE_MAP
+from StateEst_Utils.ConeType import ConeType
+
+# base class:
 from .ConeMap_Base import ConeMap_Base
-from config import COMULATIVE_CONE_MAP
+
 
 class ConeMap_Naive(ConeMap_Base):
     def __init__(self):

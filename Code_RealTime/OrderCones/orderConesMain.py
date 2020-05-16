@@ -25,7 +25,7 @@ def orderCones(coneMap, carState  ):
 	# carState.theta = math.pi/2
 	#to order cones by delaunay
 	bluePoints , yellowPoints , blueLost ,yellowLost = orderByDeluanay(coneMap, carState)
-	printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState)
+	# printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState)
 	return bluePoints  ,yellowPoints
 	
 def printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState):

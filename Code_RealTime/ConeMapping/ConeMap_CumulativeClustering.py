@@ -1,38 +1,30 @@
 import numpy as np
 import math
 
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
 
-## for relative path
-import os
-import sys
-from pathlib import Path
-current_path  = os.path.dirname(__file__)
-current_path = Path(current_path)
-relative_path = current_path.parent
-sys.path.append(str(relative_path))
-
+# Clusttering method
 from .ClusteringOptics import ClusteringOptics
+# base class:
 from .ConeMap_Base import ConeMap_Base
 
 
-## import depanding on running state / configuration state:
-from config import CONFIG , ConfigEnum , IS_DEBUG_MODE
-
-if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
-    from pyFormulaClient import messages
-    # from pyFormulaClient.messages.state_est import StateCone
-elif ( CONFIG == ConfigEnum.LOCAL_TEST):
-    from pyFormulaClientNoNvidia import messages
-    # from pyFormulaClientNoNvidia.messages.state_est import StateCone
-else:
-    raise NameError('User Should Choose Configuration from config.py')
+## classes and enums from our utilities:
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE 
+from StateEst_Utils.ConeType import ConeType
 
 
 # Get proper Enum:
-YELLOW      = messages.perception.Yellow
-BLUE        = messages.perception.Blue
-ORANGE_BIG  = messages.perception.OrangeBig
-ORANGE_SMALL= messages.perception.Orange
+YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE #messages.perception.Blue
+ORANGE_BIG   = ConeType.ORANGE_BIG #messages.perception.OrangeBig
+ORANGE_SMALL = ConeType.ORANGE_SMALL 
+UNKNOWN      = ConeType.UNKNOWN
+
 
 
 class ConeMap_CumulativeClustering(ConeMap_Base):
@@ -48,7 +40,9 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         self._call_counter = 0
 
 
+    '''Sampling new cones'''
     def insert_new_points(  self  , cone_array   ):
+        
         self._call_counter = self._call_counter + 1
         self._cone_samples = np.append( self._cone_samples , cone_array )
 

@@ -3,29 +3,21 @@ import numpy as np
 from scipy.spatial import Delaunay
 import copy
 
-## for relative path
-import os 
-import sys
-current_dir_name = os.path.dirname(__file__)
-relative_dir_name = os.path.join(current_dir_name, '..')
-sys.path.append(relative_dir_name)
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
 
+## classes and enums from our utilities:
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE 
+from StateEst_Utils.ConeType import ConeType
 
-## import depanding on running state / configuration state:
-from config import CONFIG , ConfigEnum
-
-if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
-    from pyFormulaClient import messages
-elif ( CONFIG == ConfigEnum.LOCAL_TEST):
-    from pyFormulaClientNoNvidia import messages
-else:
-    raise NameError('User Should Choose Configuration from config.py')
 
 # Get proper Enum:
-YELLOW 		 = messages.perception.Yellow
-BLUE 		 = messages.perception.Blue
-ORANGE 		 = messages.perception.OrangeBig
-#ORANGE_SMALL = messages.perception.Orange
+YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE #messages.perception.Blue
+ORANGE 		 = ConeType.ORANGE_BIG #messages.perception.OrangeBig
 
 FAKECONE = -10
 

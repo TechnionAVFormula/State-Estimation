@@ -13,7 +13,5 @@ else:
     raise NameError("User Should Choose Configuration from config.py")
 
 
-IMPORT_messages = messages
-IMPORT_NoFormulaMessages = NoFormulaMessages
 messages = messages
 NoFormulaMessages = NoFormulaMessages

@@ -1,27 +1,24 @@
 import math
 import numpy as np
 
-## import depanding on running state / configuration state:
-from config import CONFIG , ConfigEnum
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
 
-if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
-    from pyFormulaClient import messages
-elif ( CONFIG == ConfigEnum.LOCAL_TEST):
-    from pyFormulaClientNoNvidia import messages
-else:
-    raise NameError('User Should Choose Configuration from config.py')
+## classes and enums from our utilities:
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE 
+from StateEst_Utils.ConeType import ConeType
 
-
-
+# Get proper Enum:
+YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE #messages.perception.Blue
+ORANGE 		 = ConeType.ORANGE_BIG #messages.perception.OrangeBig
 """
 Function takes orders cones by distance to car
 """
 
-# Get proper Enum:
-YELLOW 		= messages.perception.Yellow
-BLUE   		= messages.perception.Blue
-ORANGE_BIG  = messages.perception.OrangeBig
-ORANGE_SMALL= messages.perception.Orange
 
 
 class OrderByDis:
