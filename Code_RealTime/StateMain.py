@@ -56,14 +56,14 @@ if IS_TIME_CODE_WITH_TIMER:
 ## Flags and Enums and stuff:
 IS_PRINT_ON_NO_MSG = False
 IS_PRINT_OUTPUT_MSG = False
+IS_KALMAN_FILTER = True
+
 
 class State:
     def __init__(self):
         # Development Flag:
-        self.is_kalman_filter = True
         self.is_compare2ground_truth = False
 
-        self.is_plotly = SHOW_REALTIME_DASHBOARD
         self.is_order_cones = True
         # logger:
         self.logger = InitLogger()
@@ -75,7 +75,7 @@ class State:
         self._ordered_cones = {"left": np.array([]), "right": np.array([])}
         # Localization of car (Kalman Filter):
         self._car_state = messages.state_est.CarState()  # keeping our most recent known state here
-        if self.is_kalman_filter:
+        if IS_KALMAN_FILTER:
             self._GPSOneShot = GPSOneShot()
             self._last_kalman_time_milisec = None
             self._kalman_filter = Kalman()
@@ -188,7 +188,7 @@ class State:
             self.logger.debug(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
 
 
-        if self.is_kalman_filter:
+        if IS_KALMAN_FILTER:
             self._GPSOneShot.set_new_data(x, y, time_in_milisec)
 
         else:
@@ -251,7 +251,7 @@ class State:
             self._last_kalman_time_milisec = time_in_milisec
 
 
-        if self.is_kalman_filter:
+        if IS_KALMAN_FILTER:
 
             """ Prediction: """
             delta = car_data.car_measurments.steering_angle  # steering angle
@@ -383,7 +383,7 @@ class State:
         # save_as_json(msg_out)
 
         ## send data to dash-board
-        if self.is_plotly:
+        if SHOW_REALTIME_DASHBOARD:
             if self.is_compare2ground_truth and ( len(self._ground_truth_memory) > 0 ) :
                 StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._ground_truth_memory[-1])
             else:
@@ -397,7 +397,7 @@ class State:
     def act_on_error(self , inputMsg , e, source_str):
         error_msg = e.args[0]
         input_msg_id = inputMsg.header.id
-        errorMsg =  f" Error at {source_str:10} ; Due to msg id {input_msg_id:4} ; Error: {error_msg}"
+        errorMsg =  f" Error at {source_str:15} ; Due to msg id {input_msg_id:10} ; Error: {error_msg}"
         self.logger.info(errorMsg)
 
 
