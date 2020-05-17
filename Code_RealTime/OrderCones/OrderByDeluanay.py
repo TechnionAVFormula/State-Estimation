@@ -15,9 +15,9 @@ from StateEst_Utils.ConeType import ConeType
 
 
 # Get proper Enum:
-YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
-BLUE 		 = ConeType.BLUE #messages.perception.Blue
-ORANGE 		 = ConeType.ORANGE_BIG #messages.perception.OrangeBig
+YELLOW 		 = ConeType.YELLOW.value #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE.value #messages.perception.Blue
+ORANGE 		 = ConeType.ORANGE_BIG.value #messages.perception.OrangeBig
 
 FAKECONE = -10
 
@@ -242,7 +242,7 @@ class MapTrack:
 		Ycones - yellow cones in order for interpolation [x,y]
 		'''
 		if self.Cones4Calc.shape[0] < 3:
-			return 0
+			return -1
 			
 		#initalize
 		Yind=np.full([MaxItrAmnt,1],np.nan)
@@ -256,7 +256,7 @@ class MapTrack:
 			Cones=np.vstack([Cones,np.hstack([self.CarCG,0,FAKECONE,0,0,0])]) #add Car to Cones as a fake cone
 			DT=Delaunay(Cones[:,:2])#Triangulate /w Cones+CarCG
 			ID=DT.find_simplex(self.CarCG+0.5*self.CarLength*self.CarDir) #find first triangle to work with
-		if ID == -1: return  # no cones in sight. couldnt build a track
+		if ID == -1: return -1  # no cones in sight. couldnt build a track
 
 		#Important note: DT.find_simplex returns -1 if point is outside triangulation.
 		#But we use setdiff1d in both TriOne and FindNextTriangle so NewID can be of empty.
@@ -283,7 +283,7 @@ class MapTrack:
 			#find next triangle
 			NewID,Newu,NewCrossEdge,Cost,RRatio=FindNextTriangle(DT,Cones[:,2],NewID,Newu,NewCrossEdge,ColorCostWeight)
 			#check conditions, if not good enough - break
-			if NewID.size==0 or CostThreshold<Cost or RRatioThreshold<RRatio:
+			if NewID.size==0:
 				break
 			#add next cone to Bind/Yind
 			NewV=np.setdiff1d(DT.simplices[NewID,:],NewCrossEdge)
