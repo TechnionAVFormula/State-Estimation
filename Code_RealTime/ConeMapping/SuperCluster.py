@@ -15,6 +15,8 @@ CERTAINTY_DETECTION_THRESHOLD  = -5 # num itrations the super cluster lives
 
 class SuperCluster():
 
+    availableID = 1
+
     def __init__(self,Type,Weight,x,y):
         self.x = x
         self.y = y
@@ -22,6 +24,15 @@ class SuperCluster():
         self.Type = Type # color
         self._age = 0 #number of iterations the super cluster live
         self._is_eternal = False
+        # Keep track on this cone's ID:
+        self.id  = SuperCluster.availableID
+        SuperCluster.increment_availableID()
+
+    @staticmethod
+    def increment_availableID():
+        SuperCluster.availableID = SuperCluster.availableID + 1
+
+
     
     def combine(self, other): #the one that has been called "combine" lives and the other dies 
         SumWeights = other.Weight+self.Weight
@@ -30,6 +41,8 @@ class SuperCluster():
         self.Weight=SumWeights
         SumAges = other._age+self._age    
         self._age=SumAges
+
+    def markSeen(self):
         self._becomeYounger()
 
     def markNotSeen(self):
@@ -37,7 +50,6 @@ class SuperCluster():
             pass    
         else:
             self._becomeOlder()
-        return self.checkDead()
 
     def _becomeOlder(self): #if we didnt apply combine 
         self._age=self._age+1
@@ -54,7 +66,21 @@ class SuperCluster():
         else:
             return False
 
+    def getX(self):
+        return self.x
+        
+    def getY(self):
+        return self.y
 
+    def getWeight(self):
+        return self.Weight
+
+    def getType(self):
+        return self.Type
+
+    def getAge(self):
+        return self._age
+    
 if __name__ == "__main__":
     a = SuperCluster(ConeType.YELLOW, 10, 3, 4)
     b = SuperCluster(ConeType.YELLOW, 20, 3, 5)

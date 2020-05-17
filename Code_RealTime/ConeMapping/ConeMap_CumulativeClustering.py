@@ -8,11 +8,22 @@ relativePath = currentPath.parent.parent
 sys.path.append(str(relativePath))
 
 # Clusttering method
-from ClusteringOptics import ClusteringOptics
+try:
+    from Code_RealTime.ConeMapping.ClusteringOptics import ClusteringOptics
+except:
+    from ClusteringOptics import ClusteringOptics
+
 # base class:
-from ConeMap_Base import ConeMap_Base
+try:
+    from Code_RealTime.ConeMapping.ConeMap_Base import ConeMap_Base
+except:
+    from ConeMap_Base import ConeMap_Base
+
 # SuperCluster object for keeping track on previous detections:
-from SuperCluster import SuperCluster
+try:
+    from Code_RealTime.ConeMapping.SuperCluster import SuperCluster
+except:    
+    from SuperCluster import SuperCluster
 
 
 ## classes and enums from our utilities:
@@ -23,11 +34,12 @@ from StateEst_Utils.MessagesClass import messages
 
 
 # Get proper Enum:
-YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
-BLUE 		 = ConeType.BLUE #messages.perception.Blue
-ORANGE_BIG   = ConeType.ORANGE_BIG #messages.perception.OrangeBig
-ORANGE_SMALL = ConeType.ORANGE_SMALL 
-UNKNOWN      = ConeType.UNKNOWN
+YELLOW 		 = ConeType.YELLOW.value #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE.value #messages.perception.Blue
+ORANGE_BIG   = ConeType.ORANGE_BIG.value #messages.perception.OrangeBig
+ORANGE_SMALL = ConeType.ORANGE_SMALL.value
+UNKNOWN      = ConeType.UNKNOWN.value
+
 
 
 
@@ -62,23 +74,34 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         if ( self._call_counter >=  self.filterFrequency  ):
 
             yellow_cones , blue_cones , orange_big_cones, orange_small_cones  = self.__prepare_cones4clusttering()
-            blue_clust          = ClusteringOptics(blue_cones  ,self.realConeThreshold)
-            yellow_clust        = ClusteringOptics(yellow_cones,self.realConeThreshold)
-            orange_big_clust    = ClusteringOptics(orange_big_cones,self.realConeThreshold)
-            orange_small_clust  = ClusteringOptics(orange_small_cones,self.realConeThreshold)
+            blue_clusterList            = ClusteringOptics(blue_cones  ,self.realConeThreshold)
+            yellow_clusterList          = ClusteringOptics(yellow_cones,self.realConeThreshold)
+            orange_big_clusterList      = ClusteringOptics(orange_big_cones,self.realConeThreshold)
+            orange_small_clusterList    = ClusteringOptics(orange_small_cones,self.realConeThreshold)
 
-            self._blue_super_cluster = self._optics2SuperCluster(blue_clust ,  BLUE)
-             # same for all other colors
-            '''Shani gets: blue_clust        
-                            yellow_clust      
-                            orange_big_clust  
-                            orange_small_clust 
-                        For all of the apply convertion '''
-  
-                
+            blue_super_clusters        = _optics2SuperClusters(blue_clusterList,  BLUE)
+            yellow_super_clusters      = _optics2SuperClusters(yellow_clusterList ,  YELLOW)
+            orange_big_super_clusters  = _optics2SuperClusters(orange_big_clusterList ,  ORANGE_BIG)
+            orange_small_super_clusters= _optics2SuperClusters(orange_small_clusterList ,  ORANGE_SMALL)
 
-
+            self._blue_super_cluster            = self._combine_superClusters(blue_super_clusters         , self._blue_super_cluster)
+            self._yellow_super_cluster          = self._combine_superClusters(yellow_super_clusters       , self._yellow_super_cluster)
+            self._orange_big_super_cluster      = self._combine_superClusters(orange_big_super_clusters   , self._orange_big_super_cluster)
+            self._orange_small_super_cluster    = self._combine_superClusters(orange_small_super_clusters , self._orange_small_super_cluster)
+        
             #do svm here
+
+    def _combine_superClusters(self , new_clusters , old_clusters):
+        for old_cluster in old_clusters:
+            x_old = old_cluster.getX() 
+            y_old = old_cluster.getY()
+            for new_cluster in new_clusters:
+                x_new = new_cluster.getX()
+                y_new = new_cluster.gety()
+                distance_sqrd = (x_old-x_new)**2 + (y_old-y_new)**2 
+                if (distance_sqrd < self.SuperClusterRadius**2):
+                    old_cluster.combine(new_cluster) 
+    # need to add the logic for "killing" old super cluster                     
 
     def __prepare_cones4clusttering(self):
         yellow_cones = np.array([])
@@ -86,7 +109,7 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         orange_big_cones = np.array([])
         orange_small_cones = np.array([])
         for cone in self._cone_samples:
-            element = [cone.x , cone.y]
+            element = [cone.position.x , cone.position.y]
 
             if cone.type==YELLOW :
                 if len(yellow_cones) == 0:
@@ -114,18 +137,7 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
 
         return yellow_cones, blue_cones, orange_big_cones, orange_small_cones
 
-    def _optics2SuperClusters(opticsClusters, Type):
-        super_clusters_array = np.array([])
-        '''Shani: 
-        Get an optic cluster object an get from it:
-        x , y , weight
-        and pass it to a new supercluster'''
-        for cluster in opticsClusters:
-            newSuperCluster = SuperCluster(Type , Weight_sum , x_mean , y_mean)   
-            super_clusters_array = np.append(super_clusters_array , newSuperCluster) 
-        return super_clusters_array
-
-
+    
     ## Also in base-class
     def get_all_samples( self ):
         return self._cone_samples
@@ -145,7 +157,18 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
             cone.type = Type
             '''add to array'''
             cone_array = np.append(cone_array , cone)
-
         return cone_array
 
-''' Shani: definition for SuperCluster2Cone '''
+def _optics2SuperClusters(cluster_list, Type):
+    superClusters_list = []
+    if cluster_list==None:
+        return superClusters_list 
+    for cluster in cluster_list:
+        mean_x = np.mean(cluster[:,0])
+        mean_y = np.mean(cluster[:,1])
+        weight = np.shape(cluster)[0]
+        newSuperCluster = SuperCluster(Type , weight , mean_x , mean_y)   
+        superClusters_list.append(newSuperCluster)
+    return superClusters_list
+
+# missing main
