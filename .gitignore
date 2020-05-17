@@ -13,3 +13,7 @@ Code_RealTime/StateEstSR/__pycache__/StateEst_Dash.cpython-38.pyc
 Code_RealTime/log.log
 Code_RealTime/Messages/state.messages
 Code_RealTime/OrderCones/__pycache__/orderConesMain.cpython-38.pyc
+*.pyc
+*.pyc
+*.pyc
+Code_RealTime/Messages/state.messages

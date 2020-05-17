@@ -53,6 +53,9 @@ if IS_TIME_CODE_WITH_TIMER:
     from timeit import default_timer as timer
 
 
+## Flags and Enums and stuff:
+IS_PRINT_ON_NO_MSG = False
+IS_PRINT_OUTPUT_MSG = False
 
 class State:
     def __init__(self):
@@ -141,7 +144,7 @@ class State:
         cone_map = messages.perception.ConeMap()
         cone_msg.data.Unpack(cone_map)
         if IS_DEBUG_MODE:
-            print(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
+            self.logger.debug(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
         '''ConeMap: '''
         if IS_TIME_CODE_WITH_TIMER:
@@ -157,6 +160,8 @@ class State:
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
+
+
 
         ''''Order Cones: '''
         if IS_TIME_CODE_WITH_TIMER:
@@ -180,7 +185,7 @@ class State:
 
         """Process:"""
         if IS_DEBUG_MODE:
-            self.logger.info(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
+            self.logger.debug(f"got gps: x: {x:6.2f} y: {gps_data.position.y:6.2f} ")
 
 
         if self.is_kalman_filter:
@@ -368,7 +373,7 @@ class State:
         data = self.create_formula_state_msg()
 
         # print message for debugging:
-        if IS_DEBUG_MODE:
+        if IS_PRINT_OUTPUT_MSG:
             print_proto_message(data)
 
         # send message:
@@ -385,14 +390,15 @@ class State:
                 StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
 
     def act_on_no_message(self, source_str):
-        if IS_DEBUG_MODE:
+        if IS_DEBUG_MODE and IS_PRINT_ON_NO_MSG:
             msg =  f" no  {source_str:10}  message"
-            self.logger.info(msg)
+            self.logger.debug(msg)
 
-    def act_on_error(self , e, source_str):
+    def act_on_error(self , inputMsg , e, source_str):
         error_msg = e.args[0]
-        msg =  f" Error at {source_str:10}  : {error_msg}"
-        self.logger.info(msg)
+        input_msg_id = inputMsg.header.id
+        errorMsg =  f" Error at {source_str:10} ; Due to msg id {input_msg_id:4} ; Error: {error_msg}"
+        self.logger.info(errorMsg)
 
 
     # V===============================================V Run: V===============================================V #
@@ -406,9 +412,9 @@ class State:
                     if self.process_server_message(server_msg):
                         return
             except NoFormulaMessages:
-                self.act_on_no_message("server")
+                self.act_on_no_message("server message")
             except Exception as e:
-                self.act_on_error(e, "server")
+                self.act_on_error(server_msg ,e, "server message")
 
             ## GPS:
             try:
@@ -416,9 +422,9 @@ class State:
                 self.process_gps_message(gps_msg)
                 self.send_message2control(gps_msg)
             except NoFormulaMessages:
-                self.act_on_no_message("GPS")
+                self.act_on_no_message("GPS message")
             except Exception as e:
-                self.act_on_error(e, "GPS")
+                self.act_on_error(gps_msg ,e, "GPS message")
 
             ## car data::
             try:
@@ -426,9 +432,9 @@ class State:
                 self.process_car_data_message(car_data_msg)
                 self.send_message2control(car_data_msg)
             except NoFormulaMessages:
-                self.act_on_no_message("car data")
+                self.act_on_no_message("car data message")
             except Exception as e:
-                self.act_on_error(e, "car data")
+                self.act_on_error(car_data_msg ,e, "car data message")
 
             ## Perception:
             try:
@@ -436,9 +442,9 @@ class State:
                 self.process_cones_message(cone_msg)
                 self.send_message2control(cone_msg)
             except NoFormulaMessages:
-                self.act_on_no_message("cone map")
+                self.act_on_no_message("perception message")
             except Exception as e:
-                self.act_on_error(e, "cone map")
+                self.act_on_error(cone_msg ,e, "perception message")
 
             ## Ground Truth:
             try:
@@ -446,9 +452,9 @@ class State:
                 self.process_ground_truth_message_memory(ground_truth_msg)
                 # No need to send message2control
             except NoFormulaMessages:
-                self.act_on_no_message("ground truth")
+                self.act_on_no_message("ground truth message")
             except Exception as e:
-                self.act_on_error(e, "ground truth")
+                self.act_on_error(ground_truth_msg ,e, "ground truth message")
 
     # ^===============================================^ Run: ^===============================================^ #
 

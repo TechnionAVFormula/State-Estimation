@@ -9,7 +9,7 @@ def InitLogger():
     ch.setLevel(logging.INFO)
 
     # Create log file handler and set level to DEBUG
-    log_file_name = 'log.log'
+    log_file_name = 'StateEst_log.log'
     file_handler = logging.FileHandler(log_file_name , 'w')
     formatter = logging.Formatter("%(asctime)s %(levelname)s:%(name)s:%(message)s") # Format for the file log lines
     file_handler.setFormatter(formatter)
