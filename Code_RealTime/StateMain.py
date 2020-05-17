@@ -80,9 +80,68 @@ class State:
             self._last_kalman_time_milisec = None
             self._kalman_filter = Kalman()
 
+        # Don't send false info to Control, before we truely know it:
+        # self._IdleOutputManager = IdleManager()
+
         if self.is_compare2ground_truth:
             self._ground_truth_memory = np.array([])
             self._cone_truth = np.array([])
+
+
+    # V===============================================V Run: V===============================================V #
+    def run(self):
+        while True:
+            ''' === Server: === '''
+            try:
+                server_msg = self._client.pop_server_message()
+                if server_msg is not None:
+                    if self.process_server_message(server_msg):
+                        return
+            except NoFormulaMessages:
+                self.act_on_no_message("server message")
+            except Exception as e:
+                self.act_on_error(server_msg ,e, "server message")
+            ''' === GPS: === '''
+            try:
+                gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
+                self.process_gps_message(gps_msg)
+                self.send_message2control(gps_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("GPS message")
+            except Exception as e:
+                self.act_on_error(gps_msg ,e, "GPS message")
+
+            ''' === Car Data: === '''
+            try:
+                car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
+                self.process_car_data_message(car_data_msg)
+                self.send_message2control(car_data_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("car data message")
+            except Exception as e:
+                self.act_on_error(car_data_msg ,e, "car data message")
+
+            ''' === Perception: === '''
+            try:
+                cone_msg = self._client.get_cone_message(timeout=self._message_timeout)
+                self.process_cones_message(cone_msg)
+                self.send_message2control(cone_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("perception message")
+            except Exception as e:
+                self.act_on_error(cone_msg ,e, "perception message")
+
+            ''' === Ground Truth: === '''
+            try:
+                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
+                self.process_ground_truth_message_memory(ground_truth_msg)
+                # No need to send message2control
+            except NoFormulaMessages:
+                self.act_on_no_message("ground truth message")
+            except Exception as e:
+                self.act_on_error(ground_truth_msg ,e, "ground truth message")
+
+    # ^===============================================^ Run: ^===============================================^ #
 
     def start(self):
         self._client.connect(1)
@@ -410,65 +469,6 @@ class State:
         errorMsg =  f" Error at {source_str:15} ; Due to msg id {input_msg_id:10} ; Error: {error_msg}"
         self.logger.info(errorMsg)
 
-
-    # V===============================================V Run: V===============================================V #
-    def run(self):
-        while True:
-
-            ## Server:
-            try:
-                server_msg = self._client.pop_server_message()
-                if server_msg is not None:
-                    if self.process_server_message(server_msg):
-                        return
-            except NoFormulaMessages:
-                self.act_on_no_message("server message")
-            except Exception as e:
-                self.act_on_error(server_msg ,e, "server message")
-
-            ## GPS:
-            try:
-                gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
-                self.process_gps_message(gps_msg)
-                self.send_message2control(gps_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("GPS message")
-            except Exception as e:
-                self.act_on_error(gps_msg ,e, "GPS message")
-
-            ## car data::
-            try:
-                car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
-                self.process_car_data_message(car_data_msg)
-                self.send_message2control(car_data_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("car data message")
-            except Exception as e:
-                self.act_on_error(car_data_msg ,e, "car data message")
-
-            ## Perception:
-            try:
-                cone_msg = self._client.get_cone_message(timeout=self._message_timeout)
-                self.process_cones_message(cone_msg)
-                self.send_message2control(cone_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("perception message")
-            except Exception as e:
-                self.act_on_error(cone_msg ,e, "perception message")
-
-            ## Ground Truth:
-            try:
-                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
-                self.process_ground_truth_message_memory(ground_truth_msg)
-                # No need to send message2control
-            except NoFormulaMessages:
-                self.act_on_no_message("ground truth message")
-            except Exception as e:
-                self.act_on_error(ground_truth_msg ,e, "ground truth message")
-
-    # ^===============================================^ Run: ^===============================================^ #
-
-    # end run(self)
 
 
 """
