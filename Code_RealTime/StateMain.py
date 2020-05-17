@@ -55,7 +55,7 @@ if IS_TIME_CODE_WITH_TIMER:
 
 ## Flags and Enums and stuff:
 IS_PRINT_ON_NO_MSG = False
-IS_PRINT_OUTPUT_MSG = False
+IS_PRINT_OUTPUT_MSG = True
 IS_KALMAN_FILTER = True
 
 
@@ -345,10 +345,16 @@ class State:
         if self.is_order_cones:
             for cone in self._ordered_cones["right"]:
                 state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                data.right_bound_cones.append(state_cone)
+                try:
+                    data.right_bound_cones.append(state_cone)
+                except Exception as e:
+                    self.logger.info("Corrupted Cone")
             for cone in self._ordered_cones["left"]:
                 state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                data.left_bound_cones.append(state_cone)
+                try:
+                    data.left_bound_cones.append(state_cone)
+                except Exception as e:
+                    self.logger.info("Corrupted Cone")
         else:
             for state_cone in self._cone_map.get_all_samples():
                 if state_cone.type == YELLOW:
@@ -356,6 +362,8 @@ class State:
                 if state_cone.type == BLUE:
                     data.left_bound_cones.append(state_cone)
 
+        if True:
+            pass
         """ Missing road estimation:"""
         # distance_from_left  #= 6;
         # distance_from_right #= 7;
@@ -373,8 +381,10 @@ class State:
         data = self.create_formula_state_msg()
 
         # print message for debugging:
-        if IS_PRINT_OUTPUT_MSG:
-            print_proto_message(data)
+        if IS_DEBUG_MODE and IS_PRINT_OUTPUT_MSG:
+            message_as_text = parse_proto_message(data)
+            self.logger.debug(message_as_text)
+
 
         # send message:
         msg_out.data.Pack(data)
@@ -483,6 +493,12 @@ def print_proto_message(data):
     # print message
     msg_dict = proto_format.MessageToDict(data, including_default_value_fields=True, preserving_proto_field_name=True)
     print(json.dumps(msg_dict, indent=2))
+
+def parse_proto_message(data):
+    # print message
+    msg_dict = proto_format.MessageToDict(data, including_default_value_fields=True, preserving_proto_field_name=True)
+    msg_text = json.dumps(msg_dict, indent=2)
+    return msg_text
 
 
 def main():
