@@ -12,9 +12,9 @@ from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE
 from StateEst_Utils.ConeType import ConeType
 
 # Get proper Enum:
-YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
-BLUE 		 = ConeType.BLUE #messages.perception.Blue
-ORANGE 		 = ConeType.ORANGE_BIG #messages.perception.OrangeBig
+YELLOW 		 = ConeType.YELLOW.value #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE.value #messages.perception.Blue
+ORANGE 		 = ConeType.ORANGE_BIG.value #messages.perception.OrangeBig
 """
 Function takes orders cones by distance to car
 """

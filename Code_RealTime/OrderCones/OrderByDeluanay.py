@@ -42,7 +42,8 @@ def orderByDeluanay(Cones, CarState):
 			numCones[i][4],numCones[i][5],numCones[i][6] = Cones[i].alpha, Cones[i].r, Cones[i].position_deviation
 
 	mt = MapTrack(numCones, numCar, numVel)
-	mt.OrderCones()
+	if mt.OrderCones()==-1:
+		return [], [], [], [], -1
 	bCones, yCones = mt.OrderedBlueCones, mt.OrderedYellowCones
 	bLostCones, yLostCones = mt.LostBlue, mt.LostYellow
 	bBackCones, yBackCones = mt.BackBlueCones, mt.BackYellowCones
@@ -142,7 +143,7 @@ def orderByDeluanay(Cones, CarState):
 			yellowOrder += 1
 		
 		
-	return returnBlue, returnYellow, returnLostBlue, returnLostYellow
+	return returnBlue, returnYellow, returnLostBlue, returnLostYellow, 1
 	
 def getWeights(Cones, CarState):
 	coneTemplate = copy.deepcopy(Cones[0])
@@ -261,7 +262,7 @@ class MapTrack:
 		#Important note: DT.find_simplex returns -1 if point is outside triangulation.
 		#But we use setdiff1d in both TriOne and FindNextTriangle so NewID can be of empty.
 		NewID,Newu,NewCrossEdge=TriOne(DT,Cones[:,2],ID,self.CarDir,ColorCostWeight)
-		if NewID.size==0: return #crossed into no-man's land
+		if NewID.size==0: return -1 #crossed into no-man's land
 
 		#insert first cones into lists (Bind/Yind)
 		if Cones[NewCrossEdge[0],2]==ord('y'):
@@ -284,7 +285,10 @@ class MapTrack:
 			NewID,Newu,NewCrossEdge,Cost,RRatio=FindNextTriangle(DT,Cones[:,2],NewID,Newu,NewCrossEdge,ColorCostWeight)
 			#check conditions, if not good enough - break
 			if NewID.size==0:
-				break
+				if Itr < 5:
+					return -1
+				else:
+					break
 			#add next cone to Bind/Yind
 			NewV=np.setdiff1d(DT.simplices[NewID,:],NewCrossEdge)
 			if Cones[NewV,2]==ord('y'):
