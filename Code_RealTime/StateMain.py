@@ -31,7 +31,6 @@ else:
 import StateEstSR.StateEst_Dash as StateEst_DashBoard
 
 
-
 # for showing messages:
 from pprint import pprint
 import google.protobuf.json_format as proto_format
@@ -47,6 +46,7 @@ import time
 import signal
 import numpy as np
 
+
 from enum import Enum, auto
 
 if IS_TIME_CODE_WITH_TIMER:
@@ -57,13 +57,14 @@ if IS_TIME_CODE_WITH_TIMER:
 IS_PRINT_ON_NO_MSG = False
 IS_PRINT_OUTPUT_MSG = True
 IS_KALMAN_FILTER = True
+IS_COMPARE_GROUND_TRUTH = True
 
+if IS_COMPARE_GROUND_TRUTH:
+    import scipy.io as sio
 
 class State:
     def __init__(self):
         # Development Flag:
-        self.is_compare2ground_truth = False
-
         self.is_order_cones = True
         # logger:
         self.logger = InitLogger()
@@ -83,8 +84,9 @@ class State:
         # Don't send false info to Control, before we truely know it:
         # self._IdleOutputManager = IdleManager()
 
-        if self.is_compare2ground_truth:
-            self._ground_truth_memory = np.array([])
+        if IS_COMPARE_GROUND_TRUTH:
+            self._Compare_GroundTruth = []
+            self._Compare_StateEstimation = []
             self._cone_truth = np.array([])
 
 
@@ -150,9 +152,31 @@ class State:
         self._client.start()
 
     def stop(self):
+        if IS_COMPARE_GROUND_TRUTH:
+            self._save_compare_data()
+
         if self._client.is_alive():
             self._client.stop()
             self._client.join()
+
+    def _save_compare_data(self):
+        gt = self._Compare_GroundTruth
+        state = self._Compare_StateEstimation
+        # first try:
+        mydict = {}
+        mydict['GroundTruth'] = gt
+        mydict['StateEstimation'] = state        
+        fullpath = os.path.join(currentPath , 'CompareFile.mat')
+        sio.savemat( fullpath, mydict)
+        # second try:
+        gt_dict ={'GroundTruth':gt}
+        state_dict = {'StateEstimation': state}
+        gt_path = os.path.join(currentPath , 'Compare_gt.mat')
+        state_path = os.path.join(currentPath , 'Compare_state.mat')
+        sio.savemat( gt_path, gt_dict)
+        sio.savemat( state_path, state_dict)
+        #
+        
 
     def cone_convert_perception2StateCone(self, perception_cone):
         state_cone = messages.state_est.StateCone()
@@ -256,7 +280,7 @@ class State:
 
     def process_ground_truth_message_memory(self, gt_msg):
 
-        if not self.is_compare2ground_truth:
+        if not IS_COMPARE_GROUND_TRUTH:
             return
 
         """unpack data and time:"""
@@ -267,17 +291,17 @@ class State:
         # Process Car States:
         car_turth = {}
         car_turth["time_in_milisec"] = time_in_milisec
-        if gt_data.has_position_truth:
-            car_turth["x"] = gt_data.position.x
-            car_turth["y"] = gt_data.position.y
-        if gt_data.has_car_measurments_truth:
-            car_turth["delta"] = gt_data.car_measurments.steering_angle
-        if gt_data.has_imu_measurments_truth:
-            car_turth["speed"] = gt_data.imu_measurments.speed
-            car_turth["theta"] = gt_data.imu_measurments.orientation.z
+        if gt_data.state_ground_truth.has_position_truth:
+            car_turth["x"] = gt_data.state_ground_truth.position.x
+            car_turth["y"] = gt_data.state_ground_truth.position.y
+        if gt_data.state_ground_truth.has_car_measurments_truth:
+            car_turth["delta"] = gt_data.state_ground_truth.car_measurments.steering_angle
+        if gt_data.state_ground_truth.has_imu_measurments_truth:
+            car_turth["speed"] = gt_data.state_ground_truth.imu_measurments.speed
+            car_turth["theta"] = gt_data.state_ground_truth.imu_measurments.orientation.z
 
         if self._cone_truth.size == 0:  # Check no cones
-            for cone in gt_data.cones:
+            for cone in gt_data.state_ground_truth.cones:
                 tmp_cone = {
                     "x": cone.position.x,
                     "y": cone.position.y,
@@ -285,8 +309,8 @@ class State:
                 }
                 self._cone_truth = np.append(self._cone_truth, tmp_cone)
 
-        if self.is_compare2ground_truth:
-            self._ground_truth_memory = np.append(self._ground_truth_memory, car_turth)
+        if IS_COMPARE_GROUND_TRUTH:
+            self._Compare_GroundTruth.append(car_turth)
 
  
 
@@ -349,7 +373,18 @@ class State:
 
             self._kalman_filter.State_Correction(data_for_correction)
 
+            '''Get State Estimation: '''
             self._car_state = self._kalman_filter.Get_Current_State()
+
+            '''comparing with ground truth:'''
+            if IS_COMPARE_GROUND_TRUTH:
+                tempDict = {}
+                tempDict['x']  = self._car_state.position.x
+                tempDict['y']  = self._car_state.position.y
+                tempDict['theta']  = self._car_state.theta
+                tempDict['Vx']  = self._car_state.velocity.x
+                tempDict['Vy']  = self._car_state.velocity.y
+                self._Compare_StateEstimation.append(tempDict)                
 
         else:
             # Save Velocity:
@@ -453,8 +488,8 @@ class State:
 
         ## send data to dash-board
         if SHOW_REALTIME_DASHBOARD:
-            if self.is_compare2ground_truth and ( len(self._ground_truth_memory) > 0 ) :
-                StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._ground_truth_memory[-1])
+            if self.is_compare2ground_truth and ( len(self._Compare_GroundTruth) > 0 ) :
+                StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._Compare_GroundTruth[-1])
             else:
                 StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
 
