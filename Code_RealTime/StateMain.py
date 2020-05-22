@@ -1,3 +1,8 @@
+## Flags and Enums and stuff:
+IS_PRINT_ON_NO_MSG = False
+IS_KALMAN_FILTER = True
+IS_COMPARE_GROUND_TRUTH = True
+
 ## For relative imports:
 import sys, os, pathlib
 currentPath = pathlib.Path(os.path.dirname(__file__))
@@ -5,7 +10,7 @@ relativePath = currentPath.parent
 sys.path.append(str(relativePath))
 
 ## classes and enums from our utilities:
-from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD , IS_PRINT_OUTPUT_MSG
 from StateEst_Utils.MessagesClass import messages, NoFormulaMessages
 from StateEst_Utils.ConfigEnum import ConfigEnum
 from StateEst_Utils.ConeType import ConeType
@@ -52,12 +57,6 @@ from enum import Enum, auto
 if IS_TIME_CODE_WITH_TIMER:
     from timeit import default_timer as timer
 
-
-## Flags and Enums and stuff:
-IS_PRINT_ON_NO_MSG = False
-IS_PRINT_OUTPUT_MSG = True
-IS_KALMAN_FILTER = True
-IS_COMPARE_GROUND_TRUTH = True
 
 if IS_COMPARE_GROUND_TRUTH:
     import scipy.io as sio
@@ -152,9 +151,12 @@ class State:
         self._client.start()
 
     def stop(self):
+        # Print Finish message:
+        self.logger.info(f"StateEstimation System Runner is shuting down")
+        #Save Comparison Data for later analysis:
         if IS_COMPARE_GROUND_TRUTH:
             self._save_compare_data()
-
+        #Shut down the client:
         if self._client.is_alive():
             self._client.stop()
             self._client.join()
@@ -168,15 +170,6 @@ class State:
         mydict['StateEstimation'] = state        
         fullpath = os.path.join(currentPath , 'CompareFile.mat')
         sio.savemat( fullpath, mydict)
-        # second try:
-        gt_dict ={'GroundTruth':gt}
-        state_dict = {'StateEstimation': state}
-        gt_path = os.path.join(currentPath , 'Compare_gt.mat')
-        state_path = os.path.join(currentPath , 'Compare_state.mat')
-        sio.savemat( gt_path, gt_dict)
-        sio.savemat( state_path, state_dict)
-        #
-        
 
     def cone_convert_perception2StateCone(self, perception_cone):
         state_cone = messages.state_est.StateCone()

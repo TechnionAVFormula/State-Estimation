@@ -21,3 +21,4 @@ Code_RealTime/Messages/state.messages
 Code_RealTime/Compare_gt.mat
 Code_RealTime/Compare_state.mat
 Code_RealTime/StateEstSR/State Estimation Dash-Board.html
+*.messages
