@@ -23,7 +23,19 @@ class StateEstClient(ModuleClient):
         if (CONFIG  == ConfigEnum.REAL_TIME) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
             super().__init__(FormulaClient.ClientSource.STATE_EST)       
         elif ( CONFIG == ConfigEnum.LOCAL_TEST):
-            super().__init__(FormulaClient.ClientSource.STATE_EST, IN_MESSAGE_FILE, OUT_MESSAGE_FILE)
+            in_message_file  = IN_MESSAGE_FILE
+            out_message_file = OUT_MESSAGE_FILE
+            super().__init__(FormulaClient.ClientSource.STATE_EST, in_message_file, out_message_file)
+            # parent_dir = 'Code_RealTime'
+            # try:
+            #     super().__init__(FormulaClient.ClientSource.STATE_EST, in_message_file, out_message_file)
+            # except Exception as e:
+            #     print(f"Init error of StateEstClient(ModuleClient) for error:  {e} ") 
+            #     #in_message_file  = os.path.join(parent_dir,in_message_file)   #Funny but this gives Unix pathseperator
+            #     in_message_file  = parent_dir + '/' + in_message_file 
+            #     out_message_file = parent_dir + '/' + out_message_file 
+            #     super().__init__(FormulaClient.ClientSource.STATE_EST, in_message_file, out_message_file)
+
         self.server_messages    = MessageDeque()                                              
         self.cones_map_messages = MessageDeque(maxlen=1)        
         self.gps_messages       = MessageDeque(maxlen=1)        

@@ -17,13 +17,14 @@ from StateEst_Utils.ConfigEnum import ConfigEnum
 from StateEst_Utils.ConeType import ConeType
 
 # Client :
-from StateEstSR.StateEstClient import StateEstClient
+from StateEst_SR.StateEstClient import StateEstClient
 
-
+# Our imports:
 from OrderCones.orderConesMain import orderCones  # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman  # For smart Localization using a kalman filter
 from class_defs.GPSOneShot import GPSOneShot
-from StateEstSR.Logger import InitLogger
+from StateEst_SR.Logger import InitLogger
+from StateEst_SR.StateEst_Sleeper import SleeperManager
 
 # ConeMap:
 if IS_CONE_MAP_WITH_CLUSTERING:
@@ -34,15 +35,14 @@ else:
 # Plot and Visualizations:
 
 # from class_defs.StateEstCompPlot import CompPlot  # for plotting
-import StateEstSR.StateEst_Dash as StateEst_DashBoard
-
+import StateEst_SR.StateEst_Dash as StateEst_DashBoard
 
 # for showing messages:
 from pprint import pprint
 import google.protobuf.json_format as proto_format
 
 # from SystemRunnerPart.print_messages_file import print_messages_file
-from StateEstSR.print_messages_file import save_as_json
+from StateEst_SR.print_messages_file import save_as_json
 import json
 
 
@@ -68,6 +68,8 @@ class State:
         self.is_order_cones = True
         # logger: better than printing everything down to the Terminal:
         self.logger = InitLogger()
+        # SleeperManager: Makes sure we are not sending information too soon, when we actually know nothing:
+        self.SleeperManager = SleeperManager( minCones=2 , minTime=1.5 , minIterations=10)
         # client: Reads messages and send messages:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
@@ -141,7 +143,7 @@ class State:
                 ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
                 self.process_ground_truth_message_memory(ground_truth_msg)
                 # No need to send message2control
-                self.send_message2dash_board(cone_msg)
+                self.send_message2dash_board(ground_truth_msg)
             except NoFormulaMessages:
                 self.act_on_no_message("ground truth message")
             except Exception as e:
@@ -452,6 +454,11 @@ class State:
         # road_angle          #= 8; // direction of road . absolute in the coordinate system of xNorth yEast
 
         return data
+    def _check_ready_to_send_data_to_control(self , data):
+        currentNumCones = len(data.left_bound_cones) + len(data.right_bound_cones)
+        is_ready = self.SleeperManager.checkAwake(numCones=currentNumCones)
+        return is_ready
+
 
     def send_message2control(self, msg_in):
         # make an empty message:
@@ -461,6 +468,10 @@ class State:
 
         # summarize all the data:
         data = self._create_formula_state_msg()
+
+        #Check if we are ready to send data to control:
+        is_ready = self._check_ready_to_send_data_to_control(data) 
+        '''We still need to use this value  =-is_ready-='''
 
         # print message for debugging:
         if IS_DEBUG_MODE and IS_PRINT_OUTPUT_MSG:
