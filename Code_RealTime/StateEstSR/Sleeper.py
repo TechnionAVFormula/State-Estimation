@@ -3,7 +3,7 @@ import time
 
 
 class Sleeper():
-    
+
     def __init__(self , **kwargs):
         self.InitTime = time.monotonic()
         #Default values:

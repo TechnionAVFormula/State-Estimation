@@ -3,6 +3,7 @@ IS_PRINT_ON_NO_MSG = False
 IS_KALMAN_FILTER = True
 IS_COMPARE_GROUND_TRUTH = True
 
+
 ## For relative imports:
 import sys, os, pathlib
 currentPath = pathlib.Path(os.path.dirname(__file__))
@@ -10,7 +11,7 @@ relativePath = currentPath.parent
 sys.path.append(str(relativePath))
 
 ## classes and enums from our utilities:
-from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD , IS_PRINT_OUTPUT_MSG
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING  , IS_PRINT_OUTPUT_MSG
 from StateEst_Utils.MessagesClass import messages, NoFormulaMessages
 from StateEst_Utils.ConfigEnum import ConfigEnum
 from StateEst_Utils.ConeType import ConeType
@@ -65,9 +66,9 @@ class State:
     def __init__(self):
         # Development Flag:
         self.is_order_cones = True
-        # logger:
+        # logger: better than printing everything down to the Terminal:
         self.logger = InitLogger()
-        # client:
+        # client: Reads messages and send messages:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
         # Cone map:
@@ -107,6 +108,7 @@ class State:
                 gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
                 self.process_gps_message(gps_msg)
                 self.send_message2control(gps_msg)
+                self.send_message2dash_board(gps_msg)
             except NoFormulaMessages:
                 self.act_on_no_message("GPS message")
             except Exception as e:
@@ -117,6 +119,7 @@ class State:
                 car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
                 self.process_car_data_message(car_data_msg)
                 self.send_message2control(car_data_msg)
+                self.send_message2dash_board(car_data_msg)
             except NoFormulaMessages:
                 self.act_on_no_message("car data message")
             except Exception as e:
@@ -127,6 +130,7 @@ class State:
                 cone_msg = self._client.get_cone_message(timeout=self._message_timeout)
                 self.process_cones_message(cone_msg)
                 self.send_message2control(cone_msg)
+                self.send_message2dash_board(cone_msg)
             except NoFormulaMessages:
                 self.act_on_no_message("perception message")
             except Exception as e:
@@ -137,6 +141,7 @@ class State:
                 ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
                 self.process_ground_truth_message_memory(ground_truth_msg)
                 # No need to send message2control
+                self.send_message2dash_board(cone_msg)
             except NoFormulaMessages:
                 self.act_on_no_message("ground truth message")
             except Exception as e:
@@ -167,7 +172,7 @@ class State:
         # first try:
         mydict = {}
         mydict['GroundTruth'] = gt
-        mydict['StateEstimation'] = state        
+        mydict['StateEstimation'] = state
         fullpath = os.path.join(currentPath , 'CompareFile.mat')
         sio.savemat( fullpath, mydict)
 
@@ -227,12 +232,12 @@ class State:
             cluster_start = timer()
 
         cone_array = np.array([])
-        # Analize all cones for position in map and other basic elements:
+        # Analyze all cones for position in map and other basic elements:
         for perception_cone in cone_map.cones:
             state_cone = self.cone_convert_perception2StateCone(perception_cone)
             cone_array = np.append(cone_array, state_cone)
         self._cone_map.insert_new_points(cone_array)
-        real_cones = self._cone_map.get_all_samples() 
+        real_cones = self._cone_map.get_all_samples()
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
@@ -243,8 +248,7 @@ class State:
         if IS_TIME_CODE_WITH_TIMER:
             order_start = timer()
 
-        if self.is_order_cones:
-            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones( real_cones  , self._car_state)
+        self._ordered_cones["left"], self._ordered_cones["right"] = orderCones( real_cones  , self._car_state)
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"ordering took {timer() - order_start} ms")
@@ -377,7 +381,7 @@ class State:
                 tempDict['theta']  = self._car_state.theta
                 tempDict['Vx']  = self._car_state.velocity.x
                 tempDict['Vy']  = self._car_state.velocity.y
-                self._Compare_StateEstimation.append(tempDict)                
+                self._Compare_StateEstimation.append(tempDict)
 
         else:
             # Save Velocity:
@@ -402,25 +406,25 @@ class State:
             is_found = True
         return dist, is_found
 
-    def create_formula_state_msg(self):
+    def _create_formula_state_msg(self):
         # Makes a data object according to the formula msg proto "FormulaState"
         # With the updated state
 
         # create an empty message of state_est data:
         data = messages.state_est.FormulaState()
 
-        data.current_state.position.x            = self._car_state.position.x           
-        data.current_state.position.y            = self._car_state.position.y           
+        data.current_state.position.x            = self._car_state.position.x
+        data.current_state.position.y            = self._car_state.position.y
         data.current_state.position_deviation.x  = self._car_state.position_deviation.x 
         data.current_state.position_deviation.y  = self._car_state.position_deviation.y 
-        data.current_state.velocity.x            = self._car_state.velocity.x           
-        data.current_state.velocity.y            = self._car_state.velocity.y           
+        data.current_state.velocity.x            = self._car_state.velocity.x
+        data.current_state.velocity.y            = self._car_state.velocity.y
         data.current_state.velocity_deviation.x  = self._car_state.velocity_deviation.x 
         data.current_state.velocity_deviation.y  = self._car_state.velocity_deviation.y 
-        data.current_state.theta                 = self._car_state.theta                
-        data.current_state.theta_deviation       = self._car_state.theta_deviation      
-        data.current_state.theta_dot             = self._car_state.theta_dot            
-        data.current_state.theta_dot_deviation   = self._car_state.theta_dot_deviation 
+        data.current_state.theta                 = self._car_state.theta
+        data.current_state.theta_deviation       = self._car_state.theta_deviation
+        data.current_state.theta_dot             = self._car_state.theta_dot
+        data.current_state.theta_dot_deviation   = self._car_state.theta_dot_deviation
 
         # finish estimation:
         data.distance_to_finish, is_found = self._calc_distance_to_finish()
@@ -429,28 +433,19 @@ class State:
         data.message_type = messages.state_est.FormulaStateMessageType.prediction_and_correction
 
         # Cones:
-        if self.is_order_cones:
-            for cone in self._ordered_cones["right"]:
-                state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                try:
-                    data.right_bound_cones.append(state_cone)
-                except Exception as e:
-                    self.logger.info("Corrupted Cone")
-            for cone in self._ordered_cones["left"]:
-                state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                try:
-                    data.left_bound_cones.append(state_cone)
-                except Exception as e:
-                    self.logger.info("Corrupted Cone")
-        else:
-            for state_cone in self._cone_map.get_all_samples():
-                if state_cone.type == YELLOW:
-                    data.right_bound_cones.append(state_cone)
-                if state_cone.type == BLUE:
-                    data.left_bound_cones.append(state_cone)
+        for cone in self._ordered_cones["right"]:
+            state_cone = self.cone_convert_from_ordered2state_cone(cone)
+            try:
+                data.right_bound_cones.append(state_cone)
+            except Exception as e:
+                self.logger.info("Corrupted Cone")
+        for cone in self._ordered_cones["left"]:
+            state_cone = self.cone_convert_from_ordered2state_cone(cone)
+            try:
+                data.left_bound_cones.append(state_cone)
+            except Exception as e:
+                self.logger.info("Corrupted Cone")
 
-        if True:
-            pass
         """ Missing road estimation:"""
         # distance_from_left  #= 6;
         # distance_from_right #= 7;
@@ -465,26 +460,19 @@ class State:
         msg_out.header.id = msg_id
 
         # summarize all the data:
-        data = self.create_formula_state_msg()
+        data = self._create_formula_state_msg()
 
         # print message for debugging:
         if IS_DEBUG_MODE and IS_PRINT_OUTPUT_MSG:
             message_as_text = parse_proto_message(data)
             self.logger.debug(message_as_text)
 
-
         # send message:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
-        # save_as_json(msg_out)
-
-        ## send data to dash-board
-        if SHOW_REALTIME_DASHBOARD:
-            if self.is_compare2ground_truth and ( len(self._Compare_GroundTruth) > 0 ) :
-                StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._Compare_GroundTruth[-1])
-            else:
-                StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
+    def send_message2dash_board(self , msg_in):
+        pass
 
     def act_on_no_message(self, source_str):
         if IS_DEBUG_MODE and IS_PRINT_ON_NO_MSG:
@@ -496,7 +484,6 @@ class State:
         input_msg_id = inputMsg.header.id
         errorMsg =  f" Error at {source_str:15} ; Due to msg id {input_msg_id:10} ; Error: {error_msg}"
         self.logger.info(errorMsg)
-
 
 
 """
