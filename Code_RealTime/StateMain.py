@@ -175,7 +175,8 @@ class State:
         mydict = {}
         mydict['GroundTruth'] = gt
         mydict['StateEstimation'] = state
-        fullpath = os.path.join(currentPath , 'CompareFile.mat')
+        outputDir = os.path.join(str(currentPath) ,"Output" )  
+        fullpath = os.path.join( outputDir , 'CompareFile.mat')
         sio.savemat( fullpath, mydict)
 
     def cone_convert_perception2StateCone(self, perception_cone):
@@ -349,6 +350,7 @@ class State:
                 "delta_t_milisec": delta_t_milisec,
                 "acceleration_long": acceleration_long,
                 "acceleration_lat": acceleration_lat,
+                "theta": theta, #not in use yet
             }
 
             self._kalman_filter.State_Prediction(data_for_prediction)

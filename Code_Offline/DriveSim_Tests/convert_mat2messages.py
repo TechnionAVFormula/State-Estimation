@@ -91,7 +91,7 @@ def flip_x_y( Cones , Measurements , Ground_Truth ):
         old_theta   = Ground_Truth.theta[test_ind][0]
         Ground_Truth.x[test_ind][0]     = old_y     
         Ground_Truth.y[test_ind][0]     = old_x     
-        Ground_Truth.theta[test_ind][0] = math.pi - old_theta # theta grows from x to y
+        Ground_Truth.theta[test_ind][0] = math.pi/2 - old_theta # theta grows from x to y
 
     ## GPS:
     for test_ind in range(num['tests'] ):

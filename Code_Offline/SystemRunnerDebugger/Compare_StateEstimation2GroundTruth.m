@@ -48,23 +48,17 @@ legend('Ground Truth' , 'Staet Estimation')
 title('Position Estimation Vs Truth')
 
 % Theta:
-
-
 figure()
-
-subplot(2,1,1)
-plot( gt.theta  );
-grid on
-grid minor
-xlabel('yEast')
-ylabel('xNorth')
-title('Theta - GroundTruth')
+plot( gt.time,gt.theta   );
+hold on
 theta_state =   pi/2 - state.theta;
+plot( linspace(0,gt.time(end),length(theta_state)) , theta_state  );
 
-subplot(2,1,2)
-plot( theta_state  );
 grid on
 grid minor
-xlabel('yEast')
-ylabel('xNorth')
+ylabel('$$\theta$$' , 'Interpreter' ,'latex')
 title('Theta - StateEstimation')
+
+%%
+% x = MatOut.Measurements.omega;
+% intergral_x  = sum(x) *( gt.time(2)-gt.time(1)) / 1000 
