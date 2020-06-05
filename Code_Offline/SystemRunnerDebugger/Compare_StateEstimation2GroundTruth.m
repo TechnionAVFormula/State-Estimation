@@ -1,6 +1,6 @@
 %% Ground Truth:
 
-N = length(GroundTruth)
+N = length(GroundTruth);
 
 gt = struct();
 gt.time = zeros(1,N);
@@ -21,7 +21,7 @@ for i = 1 : N
 end
 
 %% State Estimation:
-M = length(StateEstimation)
+M = length(StateEstimation);
 
 state = struct();
 state.x = zeros(1,M);
@@ -39,7 +39,9 @@ end
 figure()
 plot( gt.y , gt.x );
 hold on
-plot(state.y  , state.x );
+plot(state.y  , state.x  ,'Marker' ,'x' , 'MarkerSize' , 4);
+hold on
+plot( MatOut.Measurements.GPS_x , MatOut.Measurements.GPS_y , 'Marker' ,'o'  )
 grid on
 grid minor
 xlabel('yEast')
@@ -51,7 +53,7 @@ title('Position Estimation Vs Truth')
 figure()
 plot( gt.time,gt.theta   );
 hold on
-theta_state =   pi/2 - state.theta;
+theta_state =   state.theta;
 plot( linspace(0,gt.time(end),length(theta_state)) , theta_state  );
 
 grid on

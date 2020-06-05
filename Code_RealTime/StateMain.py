@@ -159,7 +159,7 @@ class State:
 
     def stop(self):
         # Print Finish message:
-        self.logger.info(f"StateEstimation System Runner is shuting down")
+        self.logger.info(f"StateEstimation System Runner is shutting down")
         #Save Comparison Data for later analysis:
         if IS_COMPARE_GROUND_TRUTH:
             self._save_compare_data()
@@ -203,7 +203,7 @@ class State:
         state_cone.position_deviation = math.inf
         return state_cone
 
-    def cone_convert_from_ordered2state_cone(self, cone):
+    def generate_cone_output_msg(self, cone):
         state_cone = cone
         """
         state_cone = messages.state_est.StateCone()
@@ -342,15 +342,13 @@ class State:
             acceleration_lat = car_data.imu_sensor.imu_measurments.acceleration.y
             # some times this data exists:
             Vx = car_data.imu_sensor.imu_measurments.velocity.x
-            Vy = car_data.imu_sensor.imu_measurments.velocity.y
-            theta = car_data.imu_sensor.imu_measurments.orientation.z
+            Vy = car_data.imu_sensor.imu_measurments.velocity.y           
 
             data_for_prediction = {
                 "steering_angle": delta,  #
                 "delta_t_milisec": delta_t_milisec,
                 "acceleration_long": acceleration_long,
                 "acceleration_lat": acceleration_lat,
-                "theta": theta, #not in use yet
             }
 
             self._kalman_filter.State_Prediction(data_for_prediction)
@@ -371,6 +369,7 @@ class State:
             data_for_correction["is_exist_GPS"] = is_exist_GPS
             data_for_correction["GPS_x"] = x
             data_for_correction["GPS_y"] = y
+            data_for_correction["theta"] = car_data.imu_sensor.imu_measurments.orientation.z
 
             self._kalman_filter.State_Correction(data_for_correction)
 
@@ -438,13 +437,13 @@ class State:
 
         # Cones:
         for cone in self._ordered_cones["right"]:
-            state_cone = self.cone_convert_from_ordered2state_cone(cone)
+            state_cone = self.generate_cone_output_msg(cone)
             try:
                 data.right_bound_cones.append(state_cone)
             except Exception as e:
                 self.logger.info("Corrupted Cone")
         for cone in self._ordered_cones["left"]:
-            state_cone = self.cone_convert_from_ordered2state_cone(cone)
+            state_cone = self.generate_cone_output_msg(cone)
             try:
                 data.left_bound_cones.append(state_cone)
             except Exception as e:

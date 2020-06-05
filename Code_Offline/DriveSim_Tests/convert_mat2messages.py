@@ -105,10 +105,12 @@ def flip_x_y( Cones , Measurements , Ground_Truth ):
 
     ## Car measurements:
     for test_ind in range(num['tests']):
-        old_omega = Measurements.omega[ test_ind ][0]
         # positive omega (theta dot ) is to the right (intrinsic). positve from new x to new y:
+        old_omega = Measurements.omega[ test_ind ][0]
         Measurements.omega[ test_ind ][0] = -old_omega   
-
+        old_delta = Measurements.delta[ test_ind ][0]
+        Measurements.delta[ test_ind ][0] = -old_delta
+        
     return Cones , Measurements , Ground_Truth 
 
 
@@ -260,9 +262,11 @@ def main(output_file_name , input_mat_name):
         a_long = Measurements.a_long[imu_ind][0]
         delta  = Measurements.delta[ imu_ind][0]
         omega  = Measurements.omega[ imu_ind][0]
+        # Adding fake theta measurment by noising the GT:
+        theta = Ground_Truth.theta[  imu_ind][0] + 0.001*np.random.randn()
         # compile sensors data:
         car_measurments = make_CarMeasurments(delta)
-        imu_measurments = make_IMUMeasurments( a_long , a_lat , omega , SENSOR_NOT_AVAILABLE , SENSOR_NOT_AVAILABLE   )
+        imu_measurments = make_IMUMeasurments( a_long , a_lat , omega , theta , SENSOR_NOT_AVAILABLE   )
         # compile entire message:
         msg = create_car_data_message(car_measurments , imu_measurments )
         msg.header.id = test_ind
