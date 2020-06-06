@@ -157,10 +157,8 @@ else
     block.OutputPort(2).Data=0;
 end
 
-%lame patch... checked this if on every run instead of interuptting
-if keyspressed(8) %r was pressed, start recording
-    UserData.hRecordAnnotation.String='recording...';
-end
+if keypressed(8) %r was pressed, start recording
+    hRecordAnnotation
 
 %updated SceneAxes limits
 UpdatedLimFactor=UserData.LimFactor*(1+(abs(v)/Vmax));
