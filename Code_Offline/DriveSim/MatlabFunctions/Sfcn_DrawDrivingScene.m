@@ -36,7 +36,7 @@ block.InputPort(3).SamplingMode   ='Sample';
 
 %Register the properties of the output ports
 %keys pressed
-block.OutputPort(1).Dimensions   = 7; %logical [down,up,right,left,space,left control, left alt]
+block.OutputPort(1).Dimensions   = 8; %logical [down,up,right,left,space,left control, left alt,r]
 block.OutputPort(1).SamplingMode = 'Sample';
 block.OutputPort(1).DatatypeID   = 0;
 %trigger
@@ -138,7 +138,7 @@ if iskeydown(18) %escape
     PushbuttonCallback;
 end
 
-keyspressed=iskeydown([31,33,30,32,23,126,128]); %check keynames
+keyspressed=iskeydown([31,33,30,32,23,126,128,69]); %check keynames
 %31 - down arrow - deccelerate
 %33 - up arrow - accelerate
 %30 - turn right
@@ -146,14 +146,20 @@ keyspressed=iskeydown([31,33,30,32,23,126,128]); %check keynames
 %23 - space
 %126 - left control
 %128 - left alt
+%69 - 'r'
 
 %outputs - keystrkes
 if any(keyspressed)
     block.OutputPort(1).Data=double(keyspressed);
     block.OutputPort(2).Data=1;
 else
-    block.OutputPort(1).Data=[0,0,0,0,0,0,0];
+    block.OutputPort(1).Data=[0,0,0,0,0,0,0,0];
     block.OutputPort(2).Data=0;
+end
+
+%lame patch... checked this if on every run instead of interuptting
+if keyspressed(8) %r was pressed, start recording
+    UserData.hRecordAnnotation.String='recording...';
 end
 
 %updated SceneAxes limits
@@ -258,6 +264,13 @@ if nargin<2 %figure was not provided in input
         'Backgroundcolor',  [0.3010, 0.7450, 0.9330],...
         'Callback',     {@PushbuttonCallback});
     
+    %recording annotation
+    hRecordAnnotation=annotation(Fig,...
+        'textbox',          [0.035,0.93,0.25,0.05],...
+        'edgecolor',            [1,1,1],...
+        'FontSize',         8,...
+        'String',           'Press "r" to start recording');
+
 else %figure was provided in input
     Fig=varargin{1};
     hAxes=findobj(Fig,'type','axes');
@@ -322,6 +335,7 @@ UserData.hSteeringAngleTxt = hSteeringAngleTxt;
 UserData.hOdometerArrow = hOdometerArrow;
 UserData.hOdometerTxt = hOdometerTxt;
 UserData.hSight = hSight;
+UserData.hRecordAnnotation = hRecordAnnotation;
 
 %Store in both figure and block
 set(gcbh,'UserData',UserData);
