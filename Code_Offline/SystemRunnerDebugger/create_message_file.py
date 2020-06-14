@@ -93,7 +93,7 @@ def create_ground_truth_message( car_position , CarMeasurments , IMUMeasurments 
         pass
         gt_data.state_ground_truth.has_position_truth = False
     else:
-        # gt_data.has_position_truth = True
+        gt_data.state_ground_truth.has_position_truth = True
         gt_data.state_ground_truth.position.x = car_position[0]
         gt_data.state_ground_truth.position.y = car_position[1]
         gt_data.state_ground_truth.position.z = 0

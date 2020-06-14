@@ -13,17 +13,26 @@ from OrderCones.OrderByDeluanay import orderByDeluanay
 import tkinter as tk
 
 
+OrderByDeluanayParams = dict(MaxIterations = 25 )
+
 
 def orderCones(coneMap, carState  ):
-	#carState.theta = math.pi/2
-	#to order cones by delaunay
-	bluePoints , yellowPoints , blueLost ,yellowLost, successStatus = orderByDeluanay(coneMap, carState)
+	'''
+	this function takes the map and trys cone ordering algorithims untill one is succesful
+	Input:
+    coneMap - iterable group of cones, where each cone contains position.x, position.y and type
+    CarState - list of car properties containting CarState.x, CarState.y, and theta
+	'''
 
-	#if ordering failed order by distance
-	if successStatus == -1:
-		orderClass = OrderByDis(coneMap , carState)
-		bluePoints , yellowPoints = orderClass.orderByDis()
-	# printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState)
+	#first algorithim - delaunay
+	bluePoints , yellowPoints , blueLost ,yellowLost, successStatus = orderByDeluanay(coneMap, carState, OrderByDeluanayParams)
+	if successStatus == 1:
+		return bluePoints  ,yellowPoints
+
+	#last algorithim - distance
+	#never fails
+	orderClass = OrderByDis(coneMap , carState)
+	bluePoints , yellowPoints = orderClass.orderByDis()
 	return bluePoints  ,yellowPoints
 	
 def printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState):
@@ -60,5 +69,3 @@ def printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState):
 	my_canvas.pack()
 
 	root.mainloop()
-    
-

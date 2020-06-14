@@ -35,40 +35,14 @@ class Kalman:
         elif (CONFIG == ConfigEnum.LOCAL_TEST) or (CONFIG == ConfigEnum.COGNATA_SIMULATION):
             # Test values:
             self._State_Correction = np.zeros([5, 1])
-            self._Measure_GPS_Noise = np.diag([0.0025, 0.0025])
+            self._Measure_GPS_Noise = np.diag([0.25, 0.25])  #How much we're no sure about x, y in the GPS measurements
             self._Covariance_Update = 0.01 * np.eye(len(self._State_Correction))
-            self._Motion_Noise = np.diag([3, 0 ** 2])
-            self._Measure_Acc_Noise = np.diag([0.00025, 0.0025, 0.25])
+            self._Motion_Noise = np.diag([0.5, 0 ** 2]) # Acceleration_command_noise ,  Steering_command_noise
+            self._Measure_Acc_Noise = np.diag([0.5, 0.5, 0.005, 0.0000005])  #x_noise , y_noise , omega_noise, theta noise
             self._External_Measure_Noise = np.diag([3, 0.1])
         else:
             raise NameError("User Should Choose Configuration from config.py")
-        """
-        function [P,R,Q]  = initial_cov_mats()
-              %x    %y      %Vx  %Vy   %Theta
-R  =   [ [    2   , 0      ,   0       ,  0         , 0]  ;  ...  
-            [     0     ,  2  ,   0       ,  0         , 0]  ; ...
-            [     0     ,    0   ,  0.1555     ,  0         , 0]  ; ...
-            [     0      ,   0   ,   0       ,  0.1555         , 0]  ; ...
-            [     0      ,   0   ,   0       ,  0         , 0.22]   ]  ;
-        %measurement noise of x,y are currently sheker ve'cazav because I didn't find
-        %the error of the GPS
-        %theta measurement noise given in degrees
-        %I uesd the error given in the files plus the statistical measurment error
-Q  =   [ [    3   , 0      ,   0       ,  0         , 0]  ;  ...  
-            [     0     ,  3  ,   0       ,  0         , 0]  ; ...
-            [     0     ,    0   ,  0.23     ,  0           , 0]  ; ...
-            [     0      ,   0   ,   0       ,  0.23        , 0]  ; ...
-            [     0      ,   0   ,   0       ,  0           , 0.33]   ]  ;   
-        %same here for x,y. Nir please be proud of me 
-        %process noise calculated weighting the filter's update step and dynamic model
-        P =  [0.124536262397879              ,1.68586023371090e-07               ,0                                         ,0                                             ,-2.04133926343496e-08 ; ...
-                1.68586023371084e-07         ,0.124583808868131                    ,0                                          ,0                                              ,-0.00353120114306259 ;
-                 0                                            ,0                                                   ,0.118614066163451           ,0.0186140661634507             ,0                                     ; ...
-                 0                                            ,0                                                   ,0.0186140661634507         ,0.118614066163451               ,0                                     ; 
-                 -2.04133926343496e-08      ,-0.00353120114306259                ,0                                          ,0                                              ,2.65329138921966        ] ;
- 
-end
-        """
+     
 
         self._Slip_angle = np.array([])
         self._State_Prediction = np.array([])
@@ -170,8 +144,9 @@ end
         acceleration_long = data["acceleration_long"]
         acceleration_lat  = data["acceleration_lat"]
         gyro = data["gyro"]
+        theta = data["theta"]
 
-        self._Measure_Accelerometer = np.array([[acceleration_long] , [acceleration_lat] , [gyro] ])
+        self._Measure_Accelerometer = np.array([[acceleration_long] , [acceleration_lat] , [gyro], [theta] ]) #gyro in minus for opposite theta_dot rule
 
         # ==act here:
         self._State_Update_function()
@@ -207,11 +182,12 @@ end
         F = np.eye(5)
         if self._Number_of_Cones > 0:
             F = np.append(F, np.zeros((F.shape[0], 2 * self._Number_of_Cones)), 1)
-        self._Slip_angle = ma.atan2(
-            ma.tan(self._Control_Command[1]) * self._Vehicle_Rear_Length,
-            self._Vehicle_Total_Length,
-        )
-        V_tot = norm(self._State_Correction[2:4])
+        self._Slip_angle = 0
+        # self._Slip_angle = ma.atan2(
+        #     ma.tan(self._Control_Command[1]) * self._Vehicle_Rear_Length,
+        #     self._Vehicle_Total_Length,
+        # )
+        V_tot = norm(self._State_Correction[2:4]) # 3,4 sre velocity indices
         self._Rotational_Speed = (
             V_tot
             * ma.cos(self._Slip_angle)
@@ -219,6 +195,7 @@ end
             / self._Vehicle_Total_Length
         )
 
+        #State update addition
         Movement = np.array(
             [
                 #X:
@@ -344,7 +321,9 @@ end
             @ F
         )
 
+
     def _State_Update_function(self):
+        
         V_T = norm(self._State_Prediction[2:4] + 0.01)
         self._Measure_GPS_Model = np.array(
             [self._State_Prediction[0], self._State_Prediction[1]]
@@ -365,9 +344,12 @@ end
                     * ma.tan(self._Control_Command[1])
                     / self._Vehicle_Total_Length
                 ],
+                [self._State_Prediction[4]
+                ],
+
             ],
             dtype="float",
-        ).reshape([3, 1])
+        ).reshape([4, 1])
         Jacobian__Measure_Accelerometer_Model = np.array(
             [
                 [
@@ -405,6 +387,7 @@ end
                     0,
                     0,
                 ],
+                [0,0,0,0,1,0,0],
             ],
             dtype="float",
         )
@@ -637,3 +620,32 @@ end
             ]
         )
         return Covariance_Minimal
+
+
+"""
+        function [P,R,Q]  = initial_cov_mats()
+              %x    %y      %Vx  %Vy   %Theta
+R  =   [ [    2   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  2  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.1555     ,  0         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.1555         , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0         , 0.22]   ]  ;
+        %measurement noise of x,y are currently sheker ve'cazav because I didn't find
+        %the error of the GPS
+        %theta measurement noise given in degrees
+        %I uesd the error given in the files plus the statistical measurment error
+Q  =   [ [    3   , 0      ,   0       ,  0         , 0]  ;  ...  
+            [     0     ,  3  ,   0       ,  0         , 0]  ; ...
+            [     0     ,    0   ,  0.23     ,  0           , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0.23        , 0]  ; ...
+            [     0      ,   0   ,   0       ,  0           , 0.33]   ]  ;   
+        %same here for x,y. Nir please be proud of me 
+        %process noise calculated weighting the filter's update step and dynamic model
+        P =  [0.124536262397879              ,1.68586023371090e-07               ,0                                         ,0                                             ,-2.04133926343496e-08 ; ...
+                1.68586023371084e-07         ,0.124583808868131                    ,0                                          ,0                                              ,-0.00353120114306259 ;
+                 0                                            ,0                                                   ,0.118614066163451           ,0.0186140661634507             ,0                                     ; ...
+                 0                                            ,0                                                   ,0.0186140661634507         ,0.118614066163451               ,0                                     ; 
+                 -2.04133926343496e-08      ,-0.00353120114306259                ,0                                          ,0                                              ,2.65329138921966        ] ;
+ 
+end
+"""

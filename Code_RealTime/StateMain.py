@@ -1,3 +1,9 @@
+## Flags and Enums and stuff:
+IS_PRINT_ON_NO_MSG = False
+IS_KALMAN_FILTER = True
+IS_COMPARE_GROUND_TRUTH = True
+
+
 ## For relative imports:
 import sys, os, pathlib
 currentPath = pathlib.Path(os.path.dirname(__file__))
@@ -5,19 +11,20 @@ relativePath = currentPath.parent
 sys.path.append(str(relativePath))
 
 ## classes and enums from our utilities:
-from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING , SHOW_REALTIME_DASHBOARD
+from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE , IS_TIME_CODE_WITH_TIMER , IS_CONE_MAP_WITH_CLUSTERING  , IS_PRINT_OUTPUT_MSG
 from StateEst_Utils.MessagesClass import messages, NoFormulaMessages
 from StateEst_Utils.ConfigEnum import ConfigEnum
 from StateEst_Utils.ConeType import ConeType
 
 # Client :
-from StateEstSR.StateEstClient import StateEstClient
+from StateEst_SR.StateEstClient import StateEstClient
 
-
+# Our imports:
 from OrderCones.orderConesMain import orderCones  # for path planning
 from KalmanFilter.EKF_Slam_Class import Kalman  # For smart Localization using a kalman filter
 from class_defs.GPSOneShot import GPSOneShot
-from StateEstSR.Logger import InitLogger
+from StateEst_SR.Logger import InitLogger
+from StateEst_SR.StateEst_Sleeper import SleeperManager
 
 # ConeMap:
 if IS_CONE_MAP_WITH_CLUSTERING:
@@ -28,16 +35,14 @@ else:
 # Plot and Visualizations:
 
 # from class_defs.StateEstCompPlot import CompPlot  # for plotting
-import StateEstSR.StateEst_Dash as StateEst_DashBoard
-
-
+import StateEst_SR.StateEst_Dash as StateEst_DashBoard
 
 # for showing messages:
 from pprint import pprint
 import google.protobuf.json_format as proto_format
 
 # from SystemRunnerPart.print_messages_file import print_messages_file
-from StateEstSR.print_messages_file import save_as_json
+from StateEst_SR.print_messages_file import save_as_json
 import json
 
 
@@ -47,27 +52,25 @@ import time
 import signal
 import numpy as np
 
+
 from enum import Enum, auto
 
 if IS_TIME_CODE_WITH_TIMER:
     from timeit import default_timer as timer
 
 
-## Flags and Enums and stuff:
-IS_PRINT_ON_NO_MSG = False
-IS_PRINT_OUTPUT_MSG = True
-IS_KALMAN_FILTER = True
-
+if IS_COMPARE_GROUND_TRUTH:
+    import scipy.io as sio
 
 class State:
     def __init__(self):
         # Development Flag:
-        self.is_compare2ground_truth = False
-
         self.is_order_cones = True
-        # logger:
+        # logger: better than printing everything down to the Terminal:
         self.logger = InitLogger()
-        # client:
+        # SleeperManager: Makes sure we are not sending information too soon, when we actually know nothing:
+        self.SleeperManager = SleeperManager( minCones=2 , minTime=1.5 , minIterations=10)
+        # client: Reads messages and send messages:
         self._client = StateEstClient()
         self._message_timeout = 0.0001
         # Cone map:
@@ -80,9 +83,73 @@ class State:
             self._last_kalman_time_milisec = None
             self._kalman_filter = Kalman()
 
-        if self.is_compare2ground_truth:
-            self._ground_truth_memory = np.array([])
+        # Don't send false info to Control, before we truely know it:
+        # self._IdleOutputManager = IdleManager()
+
+        if IS_COMPARE_GROUND_TRUTH:
+            self._Compare_GroundTruth = []
+            self._Compare_StateEstimation = []
             self._cone_truth = np.array([])
+
+
+    # V===============================================V Run: V===============================================V #
+    def run(self):
+        while True:
+            ''' === Server: === '''
+            try:
+                server_msg = self._client.pop_server_message()
+                if server_msg is not None:
+                    if self.process_server_message(server_msg):
+                        return
+            except NoFormulaMessages:
+                self.act_on_no_message("server message")
+            except Exception as e:
+                self.act_on_error(server_msg ,e, "server message")
+            ''' === GPS: === '''
+            try:
+                gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
+                self.process_gps_message(gps_msg)
+                self.send_message2control(gps_msg)
+                self.send_message2dash_board(gps_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("GPS message")
+            except Exception as e:
+                self.act_on_error(gps_msg ,e, "GPS message")
+
+            ''' === Car Data: === '''
+            try:
+                car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
+                self.process_car_data_message(car_data_msg)
+                self.send_message2control(car_data_msg)
+                self.send_message2dash_board(car_data_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("car data message")
+            except Exception as e:
+                self.act_on_error(car_data_msg ,e, "car data message")
+
+            ''' === Perception: === '''
+            try:
+                cone_msg = self._client.get_cone_message(timeout=self._message_timeout)
+                self.process_cones_message(cone_msg)
+                self.send_message2control(cone_msg)
+                self.send_message2dash_board(cone_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("perception message")
+            except Exception as e:
+                self.act_on_error(cone_msg ,e, "perception message")
+
+            ''' === Ground Truth: === '''
+            try:
+                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
+                self.process_ground_truth_message_memory(ground_truth_msg)
+                # No need to send message2control
+                self.send_message2dash_board(ground_truth_msg)
+            except NoFormulaMessages:
+                self.act_on_no_message("ground truth message")
+            except Exception as e:
+                self.act_on_error(ground_truth_msg ,e, "ground truth message")
+
+    # ^===============================================^ Run: ^===============================================^ #
 
     def start(self):
         self._client.connect(1)
@@ -91,9 +158,26 @@ class State:
         self._client.start()
 
     def stop(self):
+        # Print Finish message:
+        self.logger.info(f"StateEstimation System Runner is shutting down")
+        #Save Comparison Data for later analysis:
+        if IS_COMPARE_GROUND_TRUTH:
+            self._save_compare_data()
+        #Shut down the client:
         if self._client.is_alive():
             self._client.stop()
             self._client.join()
+
+    def _save_compare_data(self):
+        gt = self._Compare_GroundTruth
+        state = self._Compare_StateEstimation
+        # first try:
+        mydict = {}
+        mydict['GroundTruth'] = gt
+        mydict['StateEstimation'] = state
+        outputDir = os.path.join(str(currentPath) ,"Output" )  
+        fullpath = os.path.join( outputDir , 'CompareFile.mat')
+        sio.savemat( fullpath, mydict)
 
     def cone_convert_perception2StateCone(self, perception_cone):
         state_cone = messages.state_est.StateCone()
@@ -119,7 +203,7 @@ class State:
         state_cone.position_deviation = math.inf
         return state_cone
 
-    def cone_convert_from_ordered2state_cone(self, cone):
+    def generate_cone_output_msg(self, cone):
         state_cone = cone
         """
         state_cone = messages.state_est.StateCone()
@@ -151,12 +235,12 @@ class State:
             cluster_start = timer()
 
         cone_array = np.array([])
-        # Analize all cones for position in map and other basic elements:
+        # Analyze all cones for position in map and other basic elements:
         for perception_cone in cone_map.cones:
             state_cone = self.cone_convert_perception2StateCone(perception_cone)
             cone_array = np.append(cone_array, state_cone)
         self._cone_map.insert_new_points(cone_array)
-        real_cones = self._cone_map.get_all_samples() 
+        real_cones = self._cone_map.get_all_samples()
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
@@ -167,8 +251,7 @@ class State:
         if IS_TIME_CODE_WITH_TIMER:
             order_start = timer()
 
-        if self.is_order_cones:
-            self._ordered_cones["left"], self._ordered_cones["right"] = orderCones( real_cones  , self._car_state)
+        self._ordered_cones["left"], self._ordered_cones["right"] = orderCones( real_cones  , self._car_state)
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"ordering took {timer() - order_start} ms")
@@ -197,7 +280,7 @@ class State:
 
     def process_ground_truth_message_memory(self, gt_msg):
 
-        if not self.is_compare2ground_truth:
+        if not IS_COMPARE_GROUND_TRUTH:
             return
 
         """unpack data and time:"""
@@ -208,17 +291,17 @@ class State:
         # Process Car States:
         car_turth = {}
         car_turth["time_in_milisec"] = time_in_milisec
-        if gt_data.has_position_truth:
-            car_turth["x"] = gt_data.position.x
-            car_turth["y"] = gt_data.position.y
-        if gt_data.has_car_measurments_truth:
-            car_turth["delta"] = gt_data.car_measurments.steering_angle
-        if gt_data.has_imu_measurments_truth:
-            car_turth["speed"] = gt_data.imu_measurments.speed
-            car_turth["theta"] = gt_data.imu_measurments.orientation.z
+        if gt_data.state_ground_truth.has_position_truth:
+            car_turth["x"] = gt_data.state_ground_truth.position.x
+            car_turth["y"] = gt_data.state_ground_truth.position.y
+        if gt_data.state_ground_truth.has_car_measurments_truth:
+            car_turth["delta"] = gt_data.state_ground_truth.car_measurments.steering_angle
+        if gt_data.state_ground_truth.has_imu_measurments_truth:
+            car_turth["speed"] = gt_data.state_ground_truth.imu_measurments.speed
+            car_turth["theta"] = gt_data.state_ground_truth.imu_measurments.orientation.z
 
         if self._cone_truth.size == 0:  # Check no cones
-            for cone in gt_data.cones:
+            for cone in gt_data.state_ground_truth.cones:
                 tmp_cone = {
                     "x": cone.position.x,
                     "y": cone.position.y,
@@ -226,8 +309,8 @@ class State:
                 }
                 self._cone_truth = np.append(self._cone_truth, tmp_cone)
 
-        if self.is_compare2ground_truth:
-            self._ground_truth_memory = np.append(self._ground_truth_memory, car_turth)
+        if IS_COMPARE_GROUND_TRUTH:
+            self._Compare_GroundTruth.append(car_turth)
 
  
 
@@ -259,8 +342,7 @@ class State:
             acceleration_lat = car_data.imu_sensor.imu_measurments.acceleration.y
             # some times this data exists:
             Vx = car_data.imu_sensor.imu_measurments.velocity.x
-            Vy = car_data.imu_sensor.imu_measurments.velocity.y
-            theta = car_data.imu_sensor.imu_measurments.orientation.z
+            Vy = car_data.imu_sensor.imu_measurments.velocity.y           
 
             data_for_prediction = {
                 "steering_angle": delta,  #
@@ -287,10 +369,22 @@ class State:
             data_for_correction["is_exist_GPS"] = is_exist_GPS
             data_for_correction["GPS_x"] = x
             data_for_correction["GPS_y"] = y
+            data_for_correction["theta"] = car_data.imu_sensor.imu_measurments.orientation.z
 
             self._kalman_filter.State_Correction(data_for_correction)
 
+            '''Get State Estimation: '''
             self._car_state = self._kalman_filter.Get_Current_State()
+
+            '''comparing with ground truth:'''
+            if IS_COMPARE_GROUND_TRUTH:
+                tempDict = {}
+                tempDict['x']  = self._car_state.position.x
+                tempDict['y']  = self._car_state.position.y
+                tempDict['theta']  = self._car_state.theta
+                tempDict['Vx']  = self._car_state.velocity.x
+                tempDict['Vy']  = self._car_state.velocity.y
+                self._Compare_StateEstimation.append(tempDict)
 
         else:
             # Save Velocity:
@@ -315,25 +409,25 @@ class State:
             is_found = True
         return dist, is_found
 
-    def create_formula_state_msg(self):
+    def _create_formula_state_msg(self):
         # Makes a data object according to the formula msg proto "FormulaState"
         # With the updated state
 
         # create an empty message of state_est data:
         data = messages.state_est.FormulaState()
 
-        data.current_state.position.x            = self._car_state.position.x           
-        data.current_state.position.y            = self._car_state.position.y           
+        data.current_state.position.x            = self._car_state.position.x
+        data.current_state.position.y            = self._car_state.position.y
         data.current_state.position_deviation.x  = self._car_state.position_deviation.x 
         data.current_state.position_deviation.y  = self._car_state.position_deviation.y 
-        data.current_state.velocity.x            = self._car_state.velocity.x           
-        data.current_state.velocity.y            = self._car_state.velocity.y           
+        data.current_state.velocity.x            = self._car_state.velocity.x
+        data.current_state.velocity.y            = self._car_state.velocity.y
         data.current_state.velocity_deviation.x  = self._car_state.velocity_deviation.x 
         data.current_state.velocity_deviation.y  = self._car_state.velocity_deviation.y 
-        data.current_state.theta                 = self._car_state.theta                
-        data.current_state.theta_deviation       = self._car_state.theta_deviation      
-        data.current_state.theta_dot             = self._car_state.theta_dot            
-        data.current_state.theta_dot_deviation   = self._car_state.theta_dot_deviation 
+        data.current_state.theta                 = self._car_state.theta
+        data.current_state.theta_deviation       = self._car_state.theta_deviation
+        data.current_state.theta_dot             = self._car_state.theta_dot
+        data.current_state.theta_dot_deviation   = self._car_state.theta_dot_deviation
 
         # finish estimation:
         data.distance_to_finish, is_found = self._calc_distance_to_finish()
@@ -342,34 +436,30 @@ class State:
         data.message_type = messages.state_est.FormulaStateMessageType.prediction_and_correction
 
         # Cones:
-        if self.is_order_cones:
-            for cone in self._ordered_cones["right"]:
-                state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                try:
-                    data.right_bound_cones.append(state_cone)
-                except Exception as e:
-                    self.logger.info("Corrupted Cone")
-            for cone in self._ordered_cones["left"]:
-                state_cone = self.cone_convert_from_ordered2state_cone(cone)
-                try:
-                    data.left_bound_cones.append(state_cone)
-                except Exception as e:
-                    self.logger.info("Corrupted Cone")
-        else:
-            for state_cone in self._cone_map.get_all_samples():
-                if state_cone.type == YELLOW:
-                    data.right_bound_cones.append(state_cone)
-                if state_cone.type == BLUE:
-                    data.left_bound_cones.append(state_cone)
+        for cone in self._ordered_cones["right"]:
+            state_cone = self.generate_cone_output_msg(cone)
+            try:
+                data.right_bound_cones.append(state_cone)
+            except Exception as e:
+                self.logger.info("Corrupted Cone")
+        for cone in self._ordered_cones["left"]:
+            state_cone = self.generate_cone_output_msg(cone)
+            try:
+                data.left_bound_cones.append(state_cone)
+            except Exception as e:
+                self.logger.info("Corrupted Cone")
 
-        if True:
-            pass
         """ Missing road estimation:"""
         # distance_from_left  #= 6;
         # distance_from_right #= 7;
         # road_angle          #= 8; // direction of road . absolute in the coordinate system of xNorth yEast
 
         return data
+    def _check_ready_to_send_data_to_control(self , data):
+        currentNumCones = len(data.left_bound_cones) + len(data.right_bound_cones)
+        is_ready = self.SleeperManager.checkAwake(numCones=currentNumCones)
+        return is_ready
+
 
     def send_message2control(self, msg_in):
         # make an empty message:
@@ -378,26 +468,23 @@ class State:
         msg_out.header.id = msg_id
 
         # summarize all the data:
-        data = self.create_formula_state_msg()
+        data = self._create_formula_state_msg()
+
+        #Check if we are ready to send data to control:
+        is_ready = self._check_ready_to_send_data_to_control(data) 
+        '''We still need to use this value  =-is_ready-='''
 
         # print message for debugging:
         if IS_DEBUG_MODE and IS_PRINT_OUTPUT_MSG:
             message_as_text = parse_proto_message(data)
             self.logger.debug(message_as_text)
 
-
         # send message:
         msg_out.data.Pack(data)
         self._client.send_message(msg_out)
 
-        # save_as_json(msg_out)
-
-        ## send data to dash-board
-        if SHOW_REALTIME_DASHBOARD:
-            if self.is_compare2ground_truth and ( len(self._ground_truth_memory) > 0 ) :
-                StateEst_DashBoard.send_StateEst_DashBoard_with_GroundTruth(msg_out , self._ground_truth_memory[-1])
-            else:
-                StateEst_DashBoard.send_StateEst_DashBoard_msg(msg_out)
+    def send_message2dash_board(self , msg_in):
+        pass
 
     def act_on_no_message(self, source_str):
         if IS_DEBUG_MODE and IS_PRINT_ON_NO_MSG:
@@ -409,66 +496,6 @@ class State:
         input_msg_id = inputMsg.header.id
         errorMsg =  f" Error at {source_str:15} ; Due to msg id {input_msg_id:10} ; Error: {error_msg}"
         self.logger.info(errorMsg)
-
-
-    # V===============================================V Run: V===============================================V #
-    def run(self):
-        while True:
-
-            ## Server:
-            try:
-                server_msg = self._client.pop_server_message()
-                if server_msg is not None:
-                    if self.process_server_message(server_msg):
-                        return
-            except NoFormulaMessages:
-                self.act_on_no_message("server message")
-            except Exception as e:
-                self.act_on_error(server_msg ,e, "server message")
-
-            ## GPS:
-            try:
-                gps_msg = self._client.get_gps_message(timeout=self._message_timeout)
-                self.process_gps_message(gps_msg)
-                self.send_message2control(gps_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("GPS message")
-            except Exception as e:
-                self.act_on_error(gps_msg ,e, "GPS message")
-
-            ## car data::
-            try:
-                car_data_msg = self._client.get_car_data_message( timeout=self._message_timeout)
-                self.process_car_data_message(car_data_msg)
-                self.send_message2control(car_data_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("car data message")
-            except Exception as e:
-                self.act_on_error(car_data_msg ,e, "car data message")
-
-            ## Perception:
-            try:
-                cone_msg = self._client.get_cone_message(timeout=self._message_timeout)
-                self.process_cones_message(cone_msg)
-                self.send_message2control(cone_msg)
-            except NoFormulaMessages:
-                self.act_on_no_message("perception message")
-            except Exception as e:
-                self.act_on_error(cone_msg ,e, "perception message")
-
-            ## Ground Truth:
-            try:
-                ground_truth_msg = self._client.get_ground_truth_message(timeout=self._message_timeout)
-                self.process_ground_truth_message_memory(ground_truth_msg)
-                # No need to send message2control
-            except NoFormulaMessages:
-                self.act_on_no_message("ground truth message")
-            except Exception as e:
-                self.act_on_error(ground_truth_msg ,e, "ground truth message")
-
-    # ^===============================================^ Run: ^===============================================^ #
-
-    # end run(self)
 
 
 """
