@@ -19,11 +19,11 @@ from StateEst_Utils.ConeType import ConeType
 
 
 # Get proper Enum:
-YELLOW 		 = ConeType.YELLOW #messages.perception.Yellow
-BLUE 		 = ConeType.BLUE #messages.perception.Blue
-ORANGE_BIG   = ConeType.ORANGE_BIG #messages.perception.OrangeBig
-ORANGE_SMALL = ConeType.ORANGE_SMALL 
-UNKNOWN      = ConeType.UNKNOWN
+YELLOW 		 = ConeType.YELLOW.value #messages.perception.Yellow
+BLUE 		 = ConeType.BLUE.value #messages.perception.Blue
+ORANGE_BIG   = ConeType.ORANGE_BIG.value #messages.perception.OrangeBig
+ORANGE_SMALL = ConeType.ORANGE_SMALL.value 
+UNKNOWN      = ConeType.UNKNOWN.value
 
 
 
@@ -51,7 +51,7 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         # we need to get a certein amount of samples - denoted by self.filter_freq:
         if ( self._call_counter >=  self.filter_freq  ):
             print(f"ConeMap::Filtering cones.  _call_counter={self._call_counter}")
-            self._call_counter = 0
+            self._call_counter = 0 
 
             yellow_cones , blue_cones , orange_cones = self.__prepare_cones4clusttering()
             blue_clust    = ClusteringOptics(blue_cones  ,self.real_cone_threshold)
@@ -65,26 +65,29 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         blue_cones   = np.array([])
         orange_cones = np.array([])
         for cone in self._cone_samples:
-            element = [cone.x , cone.y]
+            element = [cone.position.x , cone.position.y]
 
-            if cone.type==YELLOW :
+            if cone.type == YELLOW :
                 if len(yellow_cones) == 0:
                    yellow_cones=np.append(yellow_cones, element)
                 else:
                     yellow_cones=np.vstack((yellow_cones, element))
 
-            if cone.type==BLUE :
+            if cone.type == BLUE :
                 if len(blue_cones) == 0:
                    blue_cones=np.append(blue_cones, element)
                 else:
                     blue_cones=np.vstack((blue_cones, element))
 
-            if cone.type==ORANGE_BIG:
+            if cone.type == ORANGE_BIG:
                 if len(orange_cones) == 0:
                    orange_cones=np.append(orange_cones, element)
                 else:
                     orange_cones=np.vstack((orange_cones, element))
 
+            if cone.type == UNKNOWN:
+                print(f"StateEstimation:ConeMap_CumulativeClustering: Got an unkown cone type")
+                
             '''!!! Add ORANGE_SMALL !!!'''
 
         return yellow_cones, blue_cones, orange_cones

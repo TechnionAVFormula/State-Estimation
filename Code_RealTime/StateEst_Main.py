@@ -247,7 +247,7 @@ class State:
             cluster_start = timer()
 
         self._cone_map.insert_new_points(cone_array)
-        real_cones = self._cone_map.get_all_samples()
+        real_cones = self._cone_map.get_real_cones()
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")

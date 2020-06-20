@@ -3,6 +3,14 @@ import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
 import numpy as np
 
+## for relative Imports
+import sys, os, pathlib
+currentPath = pathlib.Path(os.path.dirname(__file__))
+relativePath = currentPath.parent.parent
+sys.path.append(str(relativePath))
+
+from StateEst_Utils.config import IS_PLOT_CONE_MAP_RESULTS 
+
 IS_PLOT_RESULTS = True
 
 def ClusteringOptics(X  , threshold):
@@ -12,7 +20,7 @@ def ClusteringOptics(X  , threshold):
     #reachability = clust.reachability_[clust.ordering_]
     #labels = clust.labels_[clust.ordering_]
 
-    if IS_PLOT_RESULTS :
+    if IS_PLOT_CONE_MAP_RESULTS :
         # plot results
         plt.figure()
         G = gridspec.GridSpec(1, 1)
