@@ -34,7 +34,15 @@ class SuperCluster():
 
 
     
-    def combine(self, other): #the one that has been called "combine" lives and the other dies 
+    def combine(self, other): 
+        """combine Combined existing cluster with a new one.
+
+        The one that has been called "combine" lives and the other dies
+
+        Args:
+            other ([type]): [description]
+        """
+
         SumWeights = other.Weight+self.Weight
         self.x=(other.Weight*other.x+self.Weight*self.x)/SumWeights
         self.y=(other.Weight*other.y+self.Weight*self.y)/SumWeights

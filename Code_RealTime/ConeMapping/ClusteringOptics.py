@@ -16,7 +16,7 @@ IS_PLOT_RESULTS = True
 def ClusteringOptics(X  , threshold):
     clust = OPTICS(min_samples=threshold, xi=.55, min_cluster_size=.05 , max_eps=3)
     if X.size == 0: # We don't have any samples of that type of cones:
-        return clust #return as is: (empty Optics object)
+        return None 
     elif X.ndim==2 and X.shape[1]==2 and X.shape[0]>0:  # A lgeit column array, with  rows of (x,y) coordinates: 
         clust.fit(X)   
     else:

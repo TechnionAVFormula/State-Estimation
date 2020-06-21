@@ -97,15 +97,49 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
             #do svm here
 
     def _combine_superClusters(self , new_clusters , old_clusters):
-        for old_cluster in old_clusters:
-            x_old = old_cluster.getX() 
-            y_old = old_cluster.getY()
-            for new_cluster in new_clusters:
-                x_new = new_cluster.getX()
-                y_new = new_cluster.gety()
+        """_combine_superClusters From new and old cluster lists, decide which are the same, and kill any
+        unnecessary data.
+
+
+        Args:
+            new_clusters (list of SuperCluster objects): just arrived.
+            old_clusters (list of SuperCluster objects): were here before.
+
+        Returns:
+            list of SuperCluster objects: combined_clusters
+        """
+
+        combined_clusters = []
+
+        for new_cluster in new_clusters:
+            x_new = new_cluster.getX()
+            y_new = new_cluster.getY()
+            is_foundSimilarOldCluster = False
+            similarOldCluster = None
+
+            # Search for a similar super cluster from the old ones
+            for old_cluster in old_clusters:
+                x_old = old_cluster.getX() 
+                y_old = old_cluster.getY()
                 distance_sqrd = (x_old-x_new)**2 + (y_old-y_new)**2 
-                if (distance_sqrd < self.SuperClusterRadius**2):
-                    old_cluster.combine(new_cluster) 
+
+                # check if that's a similar old cluster:
+                if (distance_sqrd <= self.SuperClusterRadius**2):
+                    is_foundSimilarOldCluster = True
+                    similarOldCluster = old_cluster
+                    break
+
+            if is_foundSimilarOldCluster:
+                similarOldCluster.combine( new_cluster )
+                combined_clusters.append( similarOldCluster )
+            else:
+                combined_clusters.append( new_cluster )
+            
+            # now check next new_cluster
+
+        return combined_clusters
+
+
     # need to add the logic for "killing" old super cluster                     
 
     def __prepare_cones4clusttering(self):
