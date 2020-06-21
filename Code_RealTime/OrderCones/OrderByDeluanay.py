@@ -29,15 +29,15 @@ ITERATION_AMOUNT_FOR_FAILURE = 5
 def orderByDeluanay(Cones, CarState, OrderByDeluanayParams):
     '''
     Input:
-    Cones - iterable group of cones, where each cone contains position.x, position.y and type
-    CarState - list of car properties containting CarState.x, CarState.y, and theta
+        Cones       - iterable group of cones, where each cone contains position.x, position.y and type
+        CarState    - list of car properties containting CarState.x, CarState.y, and theta
 
     Output:
-    returnBlue - np array of ordered blue cones in same format as input
-    returnYellow - np array of ordered yellow cones in same format as input
-    returnLostBlue - np array of unordered blue cones in same format as input
-    returnLostYellow - np array of unordered yellow cones in same format as input
-    success - 1 if succesful delaunay, 0 if not
+        returnBlue      - np array of ordered blue cones in same format as input
+        returnYellow    - np array of ordered yellow cones in same format as input
+        returnLostBlue  - np array of unordered blue cones in same format as input
+        returnLostYellow- np array of unordered yellow cones in same format as input
+        success - 1 if succesful delaunay, 0 if not
     '''
 
     # Parse Params:
@@ -55,8 +55,10 @@ def orderByDeluanay(Cones, CarState, OrderByDeluanayParams):
     numCar = [CarState.position.x ,CarState.position.y]
     numVel = [math.cos(CarState.theta) ,math.sin(CarState.theta)]
     for i in range(nCones):
-        numCones[i][0] = Cones[i].position.x
-        numCones[i][1] = Cones[i].position.y
+        # numCones[i][0] = Cones[i].position.x
+        # numCones[i][1] = Cones[i].position.y
+        numCones[i][0] = Cones[i].position[0]
+        numCones[i][1] = Cones[i].position[1]
         numCones[i][3] = i
         if Cones[i].type == YELLOW:
             numCones[i][2] = Y_ASCII

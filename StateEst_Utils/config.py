@@ -19,4 +19,4 @@ IS_PRINT_OUTPUT_MSG = False #Prints the entire output message to logger in debug
 # Cone map:
 IS_CONE_MAP_WITH_CLUSTERING = True
 COMULATIVE_CONE_MAP = True    # False - will shut down the option to sample more cones. Only the first cone message will count
-IS_PLOT_CONE_MAP_RESULTS = True 
+IS_PLOT_CONE_MAP_RESULTS = False 

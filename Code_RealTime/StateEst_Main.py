@@ -245,7 +245,7 @@ class State:
 
         if IS_TIME_CODE_WITH_TIMER:
             cluster_start = timer()
-
+ 
         self._cone_map.insert_new_points(cone_array)
         real_cones = self._cone_map.get_real_cones()
 
@@ -450,7 +450,7 @@ class State:
             try:
                 data.left_bound_cones.append(state_cone)
             except Exception as e:
-                self.logger.info("Corrupted Cone")
+                self.logger.info(f"Corrupted Cone. Exception Message: {e}")
 
         """Road estimation:"""
         #Missing values:

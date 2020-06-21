@@ -17,9 +17,11 @@ class SuperCluster():
 
     availableID = 1
 
-    def __init__(self,Type,Weight,x,y):
+    def __init__(self,Type,Weight,x,y,x_deviation,y_deviation):
         self.x = x
         self.y = y
+        self.x_deviation = x_deviation
+        self.y_deviation = y_deviation
         self.Weight = Weight
         self.Type = Type # color
         self._age = 0 #number of iterations the super cluster live
@@ -42,8 +44,11 @@ class SuperCluster():
         Args:
             other ([type]): [description]
         """
+        if self.getType() != self.getType(): # We shouldn't get here. the Types shouldn't be the same
+            raise Exception("combine")
 
         SumWeights = other.Weight+self.Weight
+        # Weigthed avarage. The bigger cluster has more weight on decodong the new location:
         self.x=(other.Weight*other.x+self.Weight*self.x)/SumWeights
         self.y=(other.Weight*other.y+self.Weight*self.y)/SumWeights
         self.Weight=SumWeights
@@ -75,19 +80,21 @@ class SuperCluster():
             return False
 
     def getX(self):
-        return self.x
-        
-    def getY(self):
+        return self.x  
+    def getY(self):        
         return self.y
-
+    def getXDeviation(self):
+        return self.x_deviation
+    def getYDeviation(self):
+        return self.y_deviation
     def getWeight(self):
         return self.Weight
-
     def getType(self):
         return self.Type
-
     def getAge(self):
         return self._age
+    def getId(self):
+        return self.id    
     
 if __name__ == "__main__":
     a = SuperCluster(ConeType.YELLOW, 10, 3, 4)

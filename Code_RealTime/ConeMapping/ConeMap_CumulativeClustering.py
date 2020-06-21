@@ -75,26 +75,26 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
 
         # we need to get a certein amount of samples - denoted by self.filterFrequency:
         if ( self._call_counter >=  self.filterFrequency  ):
-
+            #set counter:
             self._call_counter = 0 
-
+            #prepare cone samples for clustering module:
             yellow_cones , blue_cones , orange_big_cones, orange_small_cones  = self.__prepare_cones4clusttering()
+            #Run clustering module:
             blue_clusterObject            = ClusteringOptics(blue_cones           ,self.realConeThreshold)
             yellow_clusterObject          = ClusteringOptics(yellow_cones         ,self.realConeThreshold)
             orange_big_clusterObject      = ClusteringOptics(orange_big_cones     ,self.realConeThreshold)
             orange_small_clusterObject    = ClusteringOptics(orange_small_cones   ,self.realConeThreshold)
+            #create SuperCluster objects from the clusters that we've found:
+            new_blue_super_clusters        = optics2SuperClusters(blue_clusterObject         ,blue_cones,          BLUE         )
+            new_yellow_super_clusters      = optics2SuperClusters(yellow_clusterObject       ,yellow_cones,        YELLOW       )
+            new_orange_big_super_clusters  = optics2SuperClusters(orange_big_clusterObject   ,orange_big_cones,    ORANGE_BIG   )
+            new_orange_small_super_clusters= optics2SuperClusters(orange_small_clusterObject ,orange_small_cones,  ORANGE_SMALL )
+            #Find and check if any of those new clusters conflicts with our old saved clusters. save the results after:
+            self._blue_super_clusters            = self._combine_superClusters(new_blue_super_clusters         , self._blue_super_clusters)
+            self._yellow_super_clusters          = self._combine_superClusters(new_yellow_super_clusters       , self._yellow_super_clusters)
+            self._orange_big_super_clusters      = self._combine_superClusters(new_orange_big_super_clusters   , self._orange_big_super_clusters)
+            self._orange_small_super_clusters    = self._combine_superClusters(new_orange_small_super_clusters , self._orange_small_super_clusters)
 
-            blue_super_clusters        = _optics2SuperClusters(blue_clusterObject         ,blue_cones,          BLUE         )
-            yellow_super_clusters      = _optics2SuperClusters(yellow_clusterObject       ,yellow_cones,        YELLOW       )
-            orange_big_super_clusters  = _optics2SuperClusters(orange_big_clusterObject   ,orange_big_cones,    ORANGE_BIG   )
-            orange_small_super_clusters= _optics2SuperClusters(orange_small_clusterObject ,orange_small_cones,  ORANGE_SMALL )
-
-            self._blue_super_clusters            = self._combine_superClusters(blue_super_clusters         , self._blue_super_clusters)
-            self._yellow_super_clusters          = self._combine_superClusters(yellow_super_clusters       , self._yellow_super_clusters)
-            self._orange_big_super_clusters      = self._combine_superClusters(orange_big_super_clusters   , self._orange_big_super_clusters)
-            self._orange_small_super_clusters    = self._combine_superClusters(orange_small_super_clusters , self._orange_small_super_clusters)
-
-            #do svm here
 
     def _combine_superClusters(self , new_clusters , old_clusters):
         """_combine_superClusters From new and old cluster lists, decide which are the same, and kill any
@@ -193,23 +193,41 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         return self._cone_samples
 
     def get_real_cones( self ): 
-        cone_array = np.array([]) #contains all types
-        '''Shani : Do it for 4 colors:'''
+        
+        cone_array = np.empty( self. ) # list of all cones; contains all types
+        '''Append cones for all 4 colors:'''
         for superCluster in self._blue_super_clusters:
-            '''Get information from cluster'''
-            x    = superCluster.x   
-            y    = superCluster.y  
-            Type = superCluster.Type
-            '''passs information to cone:'''
-            cone = messages.state_est.StateCone
-            cone.position[0] = x
-            cone.position[1] = y
-            cone.type = Type
-            '''add to array'''
-            cone_array = np.append(cone_array , cone)
+            cone = SuperCluster2cone(superCluster)
+            cone_array = cone_array + [cone]  # append
+            debug_print_all_list(cone_array)
+        for superCluster in self._yellow_super_clusters:
+            cone = SuperCluster2cone(superCluster)
+            cone_array.append( cone )
+        for superCluster in self._orange_big_super_clusters:
+            cone = SuperCluster2cone(superCluster)
+            cone_array.append( cone )
+        for superCluster in self._orange_small_super_clusters:
+            cone = SuperCluster2cone(superCluster)
+            cone_array.append( cone )
         return cone_array
 
-def _optics2SuperClusters(clust, cones, ConeType):
+def SuperCluster2cone(superCluster):
+    '''Get information from cluster'''
+    x       = superCluster.getX()   
+    y       = superCluster.getY()  
+    x_dev   = superCluster.getXDeviation()
+    y_dev   = superCluster.getYDeviation()
+    Type    = superCluster.getType()
+    coneId  = superCluster.getId()
+    '''passs information to cone:'''
+    cone = messages.state_est.StateCone
+    cone.position   = (x,y)
+    cone.position_deviation = (x_dev,y_dev)
+    cone.cone_id    = coneId
+    cone.type       = Type
+    return cone
+
+def optics2SuperClusters(clust, cones, ConeType):
     superClusters_LIST = []
     if clust==None:
         return superClusters_LIST 
@@ -217,13 +235,23 @@ def _optics2SuperClusters(clust, cones, ConeType):
     maxLabel = clust.labels_.max() 
     minLabel = clust.labels_.min() 
     for k in np.arange(minLabel , maxLabel+1): #Go over all classes k:
+        #Get info from clustering object:
         indices_k = clust.labels_==k # array of all indices where vludter index is k
         cones_k = cones[indices_k] # all cones with cluster index k
-        mean_x = np.mean(cones_k[:,0])
-        mean_y = np.mean(cones_k[:,1])
+        x_vec  = cones_k[:,0]
+        y_vec  = cones_k[:,1]
+        #Compute Clusters params:
+        mean_x = np.mean(x_vec)
+        mean_y = np.mean(y_vec)
+        standart_deviation_x = np.sqrt( np.mean(  np.power( x_vec-mean_x , 2)  )  )
+        standart_deviation_y = np.sqrt( np.mean(  np.power( y_vec-mean_y , 2)  )  )
         weight = cones_k.shape[0] # number of cones_k
-        newSuperCluster = SuperCluster(ConeType , weight , mean_x , mean_y)   
+        #Create SuperCluster with those params::
+        newSuperCluster = SuperCluster(ConeType , weight , mean_x,mean_y , standart_deviation_x,standart_deviation_y)   
         superClusters_LIST.append(newSuperCluster)
     return superClusters_LIST
 
+def debug_print_all_list(list):
+    for element in list:
+        print(f"{element.position}")
 # missing main

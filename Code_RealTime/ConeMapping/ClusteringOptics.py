@@ -29,7 +29,6 @@ def ClusteringOptics(X  , threshold):
     if IS_PLOT_CONE_MAP_RESULTS :
         plot_results(X , clust)
         
-
     return clust
 
 
