@@ -193,12 +193,15 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         return self._cone_samples
 
     def get_real_cones( self ): 
-        
-        cone_array = np.empty( self. ) # list of all cones; contains all types
+        totallNumOfCones =  (len(self._orange_big_super_clusters)   +len(self._blue_super_clusters) 
+                            +len(self._orange_small_super_clusters) +len(self._yellow_super_clusters)  )
+        cone_array = [None]*totallNumOfCones # list of all cones; contains all types
+        ind=0
         '''Append cones for all 4 colors:'''
         for superCluster in self._blue_super_clusters:
             cone = SuperCluster2cone(superCluster)
-            cone_array = cone_array + [cone]  # append
+            cone_array[ind]=cone  # append
+            ind +=1
             debug_print_all_list(cone_array)
         for superCluster in self._yellow_super_clusters:
             cone = SuperCluster2cone(superCluster)
@@ -253,5 +256,8 @@ def optics2SuperClusters(clust, cones, ConeType):
 
 def debug_print_all_list(list):
     for element in list:
-        print(f"{element.position}")
+        try:
+            print(f"{element.position}")
+        except:
+            pass
 # missing main
