@@ -3,7 +3,7 @@ import time
 
 class CalibrationVerifier():
     def __init__(self , **kwargs):
-        """ Sleeper makes sure that our module doesn't five false information too quickly
+        """ CalibrationVerifier: makes sure that our module doesn't fire false information too quickly
         when we actually know nothing about the world
         
         Kwargs:
