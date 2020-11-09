@@ -187,7 +187,13 @@ class State:
 
     def cone_convert_perception2StateCone(self, perception_cone):
         state_cone = messages.state_est.StateCone()
-        state_cone.type = perception_cone.type
+
+        try:
+            state_cone.type = perception_cone.type #TODO The commented statement raises an error!
+        except:
+            self.logger.info(f"StateEst:cone_convert_perception2StateCone: Failed at setting cone type")
+
+
         # Here Theta and r are self coordinates. Meaning from the perspective of the car:
         state_cone.r = math.sqrt(
             math.pow(perception_cone.x, 2) + math.pow(perception_cone.y, 2)

@@ -41,7 +41,7 @@ ORANGE_BIG   = ConeType.ORANGE_BIG.value #messages.perception.OrangeBig
 ORANGE_SMALL = ConeType.ORANGE_SMALL.value
 UNKNOWN      = ConeType.UNKNOWN.value
 
-
+ConesTypes = ["YELLOW","BLUE","ORANGE_BIG","ORANGE_SMALL"]
 
 
 class ConeMap_CumulativeClustering(ConeMap_Base):
@@ -79,6 +79,8 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
             self._call_counter = 0 
             #prepare cone samples for clustering module:
             yellow_cones , blue_cones , orange_big_cones, orange_small_cones  = self.__prepare_cones4clusttering()
+            # Clear old samples:
+            self._cone_samples = np.array( [] )
             #Run clustering module:
             blue_clusterObject            = ClusteringOptics(blue_cones           ,self.realConeThreshold)
             yellow_clusterObject          = ClusteringOptics(yellow_cones         ,self.realConeThreshold)
@@ -246,8 +248,8 @@ def optics2SuperClusters(clust, cones, ConeType):
         #Compute Clusters params:
         mean_x = np.mean(x_vec)
         mean_y = np.mean(y_vec)
-        standart_deviation_x = np.sqrt( np.mean(  np.power( x_vec-mean_x , 2)  )  )
-        standart_deviation_y = np.sqrt( np.mean(  np.power( y_vec-mean_y , 2)  )  )
+        standart_deviation_x = np.std( x_vec )
+        standart_deviation_y = np.std( y_vec )
         weight = cones_k.shape[0] # number of cones_k
         #Create SuperCluster with those params::
         newSuperCluster = SuperCluster(ConeType , weight , mean_x,mean_y , standart_deviation_x,standart_deviation_y)   
