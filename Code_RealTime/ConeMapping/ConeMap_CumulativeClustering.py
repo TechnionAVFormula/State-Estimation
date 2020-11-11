@@ -32,7 +32,8 @@ from StateEst_Utils.config import CONFIG, IS_DEBUG_MODE
 from StateEst_Utils.ConeType import ConeType
 # messages is used to create a formula cone object:
 from StateEst_Utils.MessagesClass import messages
-
+# Copy operations so that get_real_cones() won't break when adding elements to list the pythonic way:
+import copy
 
 # Get proper Enum:
 YELLOW 		 = ConeType.YELLOW.value #messages.perception.Yellow
@@ -195,14 +196,23 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         return self._cone_samples
 
     def get_real_cones( self ): 
+        cone_array =  np.array([],dtype=object) # list of all cones; contains all types
+        '''Append cones for all 4 colors:'''
+        for superCluster in self._blue_super_clusters:
+            cone = SuperCluster2cone(superCluster)
+            cone_array = np.append( copy.deepcopy( cone_array ) , copy.deepcopy( cone ) )
+            debug_print_all_list(cone_array)
+
+
+        ##
         totallNumOfCones =  (len(self._orange_big_super_clusters)   +len(self._blue_super_clusters) 
                             +len(self._orange_small_super_clusters) +len(self._yellow_super_clusters)  )
-        cone_array = [None]*totallNumOfCones # list of all cones; contains all types
+        cone_array =  [None]*totallNumOfCones # list of all cones; contains all types
         ind=0
         '''Append cones for all 4 colors:'''
         for superCluster in self._blue_super_clusters:
             cone = SuperCluster2cone(superCluster)
-            cone_array[ind]=cone  # append
+            cone_array[ind] = copy.deepcopy( cone )   # append
             ind +=1
             debug_print_all_list(cone_array)
         for superCluster in self._yellow_super_clusters:
@@ -225,7 +235,7 @@ def SuperCluster2cone(superCluster):
     Type    = superCluster.getType()
     coneId  = superCluster.getId()
     '''passs information to cone:'''
-    cone = messages.state_est.StateCone
+    cone = copy.deepcopy( messages.state_est.StateCone )
     cone.position   = (x,y)
     cone.position_deviation = (x_dev,y_dev)
     cone.cone_id    = coneId
@@ -256,10 +266,14 @@ def optics2SuperClusters(clust, cones, ConeType):
         superClusters_LIST.append(newSuperCluster)
     return superClusters_LIST
 
-def debug_print_all_list(list):
-    for element in list:
-        try:
-            print(f"{element.position}")
-        except:
+def debug_print_all_list(givenList):
+    print("---")
+    for element in givenList:        
+        if element == None:
             pass
+        else:            
+            try:
+                print(f"{element.position}")
+            except:
+                print("passed")
 # missing main
