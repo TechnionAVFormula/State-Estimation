@@ -212,13 +212,9 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         coneArray = np.array([])
         for coneType in ConesTypes:
             for superCluster in self._super_clusters[coneType]:
-                # This causes a BUG:
-                #stateCone  = copy.deepcopy( SuperCluster2StateCone(superCluster) )
                 coneDict  = SuperCluster2Dict( superCluster )
                 tempArray = np.array( [coneDict] )
                 coneArray = np.append( coneArray , tempArray )                
-                # print to show BUG:
-                # debug_print_all_list(coneArray)
         return coneArray
             
 
@@ -287,9 +283,10 @@ def SuperCluster2StateCone(superCluster):
     Type    = superCluster.getType()
     coneId  = superCluster.getId()
     '''passs information to cone:'''
-    tempStateCone = copy.deepcopy( messages.state_est.StateCone )
-    tempStateCone.position   = (x,y)
-    tempStateCone.position_deviation = (x_dev,y_dev)
+    tempStateCone = messages.state_est.StateCone() 
+    tempStateCone.position.x = x
+    tempStateCone.position.y = y
+    tempStateCone.position_deviation = max( x_dev , y_dev )
     tempStateCone.cone_id    = coneId
     tempStateCone.type       = Type
     return tempStateCone
