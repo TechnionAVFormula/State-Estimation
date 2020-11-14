@@ -23,17 +23,20 @@ def orderCones(coneMap, carState  ):
     coneMap - iterable group of cones, where each cone contains position.x, position.y and type
     CarState - list of car properties containting CarState.x, CarState.y, and theta
 	'''
+	
+	if all( coneMap==None ):
+		return list(), list()
 
 	#first algorithim - delaunay
 	bluePoints , yellowPoints , blueLost ,yellowLost, successStatus = orderByDeluanay(coneMap, carState, OrderByDeluanayParams)
 	if successStatus == 1:
-		return bluePoints  ,yellowPoints
+		return bluePoints , yellowPoints
 
 	#last algorithim - distance
 	#never fails
 	orderClass = OrderByDis(coneMap , carState)
 	bluePoints , yellowPoints = orderClass.orderByDis()
-	return bluePoints  ,yellowPoints
+	return bluePoints , yellowPoints
 	
 def printMap(bluePoints , yellowPoints , blueLost ,yellowLost, carState):
 	root = tk.Tk()

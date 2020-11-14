@@ -46,7 +46,7 @@ def orderByDeluanay(Cones, CarState, OrderByDeluanayParams):
 
 
     # Check input:
-    if len(Cones) < 1:
+    if all(Cones==None) or (len(Cones)<1):
         return [], [], [], [], 0
 
     #Convert Cones from input format to np array: 
@@ -55,15 +55,27 @@ def orderByDeluanay(Cones, CarState, OrderByDeluanayParams):
     numCar = [CarState.position.x ,CarState.position.y]
     numVel = [math.cos(CarState.theta) ,math.sin(CarState.theta)]
     for i in range(nCones):
-        # numCones[i][0] = Cones[i].position.x
-        # numCones[i][1] = Cones[i].position.y
-        numCones[i][0] = Cones[i].position[0]
-        numCones[i][1] = Cones[i].position[1]
+        
+        cone = Cones[i]
+
         numCones[i][3] = i
-        if Cones[i].type == YELLOW:
-            numCones[i][2] = Y_ASCII
-        elif Cones[i].type == BLUE:
-            numCones[i][2] = B_ASCII 
+        if isinstance(cone,dict):
+            numCones[i][0] = cone["position"][0]
+            numCones[i][1] = cone["position"][1]
+            if   cone["type"] == YELLOW:
+                numCones[i][2] = Y_ASCII
+            elif cone["type"] == BLUE:
+                numCones[i][2] = B_ASCII 
+
+        else:  
+            numCones[i][0] = cone.position[0]
+            numCones[i][1] = cone.position[1]
+            if cone.type == YELLOW:
+                numCones[i][2] = Y_ASCII
+            elif cone.type == BLUE:
+                numCones[i][2] = B_ASCII         
+
+
 
     #Initialize ordering algorithim
     mt = MapTrack(numCones, numCar, numVel)

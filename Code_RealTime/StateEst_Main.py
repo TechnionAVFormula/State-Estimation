@@ -216,23 +216,29 @@ class State:
         return state_cone
 
     def generate_cone_output_msg(self, cone):
-        state_cone = cone
-        """
-        state_cone = messages.state_est.StateCone()
+        # state_cone = cone
+    
+        state_cone = messages.state_est.StateCone
         # things that we already have:
-        state_cone.type =  cone.type
-        state_cone.cone_id =  cone.cone_id
-        state_cone.position.x = cone.x
-        state_cone.position.y = cone.y
-        # Translate theta and are according to current car position and orientation
+        if isinstance(cone,dict):
+            state_cone.type       = cone["type"]
+            state_cone.cone_id    = cone["cone_id"]
+            state_cone.position.x = cone["position"][0]
+            state_cone.position.y = cone["position"][1]       
+        else:
+            state_cone.type       = cone.type
+            state_cone.cone_id    = cone.cone_id
+            state_cone.position.x = cone.x
+            state_cone.position.y = cone.y
 
+        # Translate theta and are according to current car position and orientation
         delta_x = cone.x - self._car_state.x
         delta_y = cone.y - self._car_state.y
         state_cone.r = math.sqrt(math.pow(  delta_x ,2) + math.pow( delta_y ,2) )
 
         total_theta = math.atan2( delta_y , delta_x  )
         state_cone.theta =   total_theta - self._car_state.theta
-        """
+       
         return state_cone
 
     def process_cones_message(self, cone_msg):
