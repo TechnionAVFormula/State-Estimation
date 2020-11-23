@@ -85,9 +85,11 @@ class State:
             self._KalmanManager = KalmanManager( updateInterval=0 ) 
         
         if IS_COMPARE_GROUND_TRUTH:
-            self._Compare_GroundTruth = []
-            self._Compare_StateEstimation = []
-            self._cone_truth = np.array([])
+            self._compare = dict()
+            self._compare["StateGT"]  = []
+            self._compare["StateEst"] = []
+            self._compare["ConeGT"]   = np.array([])
+            self._compare["ConeEst"]  = np.array([])
 
 
     # V===============================================V Run: V===============================================V #
@@ -169,8 +171,8 @@ class State:
 
     def _save_compare_data(self):
         # fetch data:
-        gt = self._Compare_GroundTruth
-        state = self._Compare_StateEstimation
+        gt = self._compare["StateGT"]
+        state = self._compare["StateEst"]
         # Save data is dictionary
         mydict = {}
         mydict['GroundTruth'] = gt
@@ -321,17 +323,19 @@ class State:
             car_turth["speed"] = gt_data.state_ground_truth.imu_measurments.speed
             car_turth["theta"] = gt_data.state_ground_truth.imu_measurments.orientation.z
 
-        if self._cone_truth.size == 0:  # Check no cones
+        if self._compare["ConeGT"].size == 0:  # Check no cones
+            self._compare["ConeEst"]
             for cone in gt_data.state_ground_truth.cones:
                 tmp_cone = {
                     "x": cone.position.x,
                     "y": cone.position.y,
                     "type": cone.type,
                 }
-                self._cone_truth = np.append(self._cone_truth, tmp_cone)
+                self._compare["ConeGT"] = np.append(self._compare["ConeGT"], tmp_cone)
+                self._compare["ConeEst"]
 
         if IS_COMPARE_GROUND_TRUTH:
-            self._Compare_GroundTruth.append(car_turth)
+            self._compare["StateGT"].append(car_turth)
 
 
 
@@ -409,7 +413,7 @@ class State:
             tempDict['theta']  = self._car_state.theta
             tempDict['Vx']  = self._car_state.velocity.x
             tempDict['Vy']  = self._car_state.velocity.y
-            self._Compare_StateEstimation.append(tempDict)
+            self._compare["StateEst"].append(tempDict)
 
 
     def process_server_message(self, server_messages):
