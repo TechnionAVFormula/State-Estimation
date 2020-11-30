@@ -86,10 +86,10 @@ class State:
         
         if IS_COMPARE_GROUND_TRUTH:
             self._compare = dict()
-            self._compare["StateGT"]  = []
-            self._compare["StateEst"] = []
-            self._compare["ConeGT"]   = np.array([])
-            self._compare["ConeEst"]  = np.array([])
+            self._compare["PoseGT"]   = []
+            self._compare["PoseEst"]  = []
+            self._compare["ConeGT"]   = []
+            self._compare["ConeEst"]  = []
 
 
     # V===============================================V Run: V===============================================V #
@@ -170,13 +170,9 @@ class State:
             self._client.join()
 
     def _save_compare_data(self):
-        # fetch data:
-        gt = self._compare["StateGT"]
-        state = self._compare["StateEst"]
+        
         # Save data is dictionary
-        mydict = {}
-        mydict['GroundTruth'] = gt
-        mydict['StateEstimation'] = state
+        mydict = self._compare        
         # set fullpath and name for file:
         outputDir = os.path.join(str(currentPath) ,"Output" )  
         fullpath = os.path.join( outputDir , 'CompareFile.mat')
@@ -268,7 +264,7 @@ class State:
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
 
-
+        
 
         ''''Order Cones: '''
         if IS_TIME_CODE_WITH_TIMER:
@@ -311,7 +307,7 @@ class State:
         gt_msg.data.Unpack(gt_data)
         time_in_milisec = gt_msg.header.timestamp.ToMilliseconds()
 
-        # Process Car States:
+        """Car GroundTruth"""
         car_turth = {}
         car_turth["time_in_milisec"] = time_in_milisec
         if gt_data.state_ground_truth.has_position_truth:
@@ -322,20 +318,24 @@ class State:
         if gt_data.state_ground_truth.has_imu_measurments_truth:
             car_turth["speed"] = gt_data.state_ground_truth.imu_measurments.speed
             car_turth["theta"] = gt_data.state_ground_truth.imu_measurments.orientation.z
+        # add:
+        self._compare["PoseGT"].append(car_turth)
 
-        if self._compare["ConeGT"].size == 0:  # Check no cones
-            self._compare["ConeEst"]
+        """ Cone Ground Truth"""
+        # Only needed once, since the ground truth of cones never change:
+        if len(self._compare["ConeGT"])==0:
+            cone_truth_arr = [];        
             for cone in gt_data.state_ground_truth.cones:
-                tmp_cone = {
-                    "x": cone.position.x,
-                    "y": cone.position.y,
-                    "type": cone.type,
+                tmp_cone_dict = {
+                    "x":    cone.position.x,
+                    "y":    cone.position.y,
+                    "type": cone.type
                 }
-                self._compare["ConeGT"] = np.append(self._compare["ConeGT"], tmp_cone)
-                self._compare["ConeEst"]
-
-        if IS_COMPARE_GROUND_TRUTH:
-            self._compare["StateGT"].append(car_turth)
+                cone_truth_arr = np.append( cone_truth_arr , tmp_cone_dict)
+            # add:
+            self._compare["ConeGT"] = cone_truth_arr 
+        
+        
 
 
 
@@ -413,7 +413,7 @@ class State:
             tempDict['theta']  = self._car_state.theta
             tempDict['Vx']  = self._car_state.velocity.x
             tempDict['Vy']  = self._car_state.velocity.y
-            self._compare["StateEst"].append(tempDict)
+            self._compare["PoseEst"].append(tempDict)
 
 
     def process_server_message(self, server_messages):

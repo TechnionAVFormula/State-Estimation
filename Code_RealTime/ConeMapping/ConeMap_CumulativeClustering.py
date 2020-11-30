@@ -218,46 +218,6 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         return coneArray
             
 
-
-    def get_real_cones_BUGGED( self ): 
-        cone_array =  np.array([]) # list of all cones; contains all types
-        '''Append cones for all 4 colors:'''
-        for superCluster in self._blue_super_clusters:
-            stateCone  = copy.deepcopy( SuperCluster2StateCone(superCluster) )
-            temp_array = copy.deepcopy( np.array( [ copy.deepcopy( stateCone ) ] ) )
-            cone_array = copy.deepcopy( np.append( copy.deepcopy( cone_array ) , copy.deepcopy( temp_array ) )  )
-            debug_print_all_list(cone_array)
-
-        cone_array =  np.array([], dtype=dict) # list of all cones; contains all types
-        '''Append cones for all 4 colors:'''
-        for superCluster in self._blue_super_clusters:
-            stateCone  = copy.deepcopy( SuperCluster2Dict(superCluster) )
-            temp_array = copy.deepcopy( np.array( [ copy.deepcopy( stateCone ) ] ) )
-            cone_array = copy.deepcopy( np.append( copy.deepcopy( cone_array ) , copy.deepcopy( temp_array ) )  )
-            debug_print_all_list(cone_array)
-
-        ##
-        totallNumOfCones =  (len(self._orange_big_super_clusters)   +len(self._blue_super_clusters) 
-                            +len(self._orange_small_super_clusters) +len(self._yellow_super_clusters)  )
-        cone_array =  [None]*totallNumOfCones # list of all cones; contains all types
-        ind=0
-        '''Append cones for all 4 colors:'''
-        for superCluster in self._blue_super_clusters:
-            cone = SuperCluster2StateCone(superCluster)
-            cone_array[ind] = copy.deepcopy( cone )   # append
-            ind +=1
-            debug_print_all_list(cone_array)
-        for superCluster in self._yellow_super_clusters:
-            cone = SuperCluster2StateCone(superCluster)
-            cone_array.append( cone )
-        for superCluster in self._orange_big_super_clusters:
-            cone = SuperCluster2StateCone(superCluster)
-            cone_array.append( cone )
-        for superCluster in self._orange_small_super_clusters:
-            cone = SuperCluster2StateCone(superCluster)
-            cone_array.append( cone )
-        return cone_array
-
 def SuperCluster2Dict(superCluster):
     '''Get information from cluster'''
     x       = superCluster.getX()   
