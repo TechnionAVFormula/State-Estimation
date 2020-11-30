@@ -60,6 +60,11 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         self._cone_samples   = np.array( [] ) #accumaltive samples before clusstering
         self._super_clusters = dict([ (coneType, np.array( [] , dtype=object ) ) for coneType in ConesTypes ]) 
         self._call_counter = 0
+        self._output_cone_array = []
+
+        # dynamic state flags:
+        # ===================
+        self.isNewConesReady = False
 
 
     '''Sampling new cones'''
@@ -71,6 +76,7 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         if ( self._call_counter >= self.filterIterationWaitInterval ):
             #set counter:
             self._call_counter = 0 
+            self.isNewConesReady = True
             #prepare cone samples for clustering module:
             #yellow_cones , blue_cones , orange_big_cones, orange_small_cones  = self.__prepare_cones4clusttering()
             PreparedConesByType = self.__prepare_cones4clusttering()
@@ -209,13 +215,25 @@ class ConeMap_CumulativeClustering(ConeMap_Base):
         return self._cone_samples
 
     def get_real_cones( self ): 
-        coneArray = np.array([])
-        for coneType in ConesTypes:
-            for superCluster in self._super_clusters[coneType]:
-                coneDict  = SuperCluster2Dict( superCluster )
-                tempArray = np.array( [coneDict] )
-                coneArray = np.append( coneArray , tempArray )                
-        return coneArray
+        # Keep last state of new cones flag:
+        isNewCones = self.isNewConesReady
+        # set back to not new cones:
+        self.isNewConesReady = False
+
+        if isNewCones:
+            # Make the output cone array from scratch:
+            coneArray = np.array([])
+            for coneType in ConesTypes:
+                for superCluster in self._super_clusters[coneType]:
+                    coneDict  = SuperCluster2Dict( superCluster )
+                    tempArray = np.array( [coneDict] )
+                    coneArray = np.append( coneArray , tempArray )             
+            # keep this for next time:
+            self._output_cone_array                   
+        else:
+            # if not new cones, just use what we've saved:
+            coneArray = self._output_cone_array
+        return coneArray, isNewCones
             
 
 def SuperCluster2Dict(superCluster):

@@ -249,22 +249,29 @@ class State:
         self.logger.debug(f"State got cone message ID {cone_msg.header.id} with {len(cone_map.cones)} cones in the queue")
 
         '''ConeMap: '''
-        cone_array = np.array([])
+        cone_samples = np.array([])
         # Analyze all cones for position in map and other basic elements:
         for perception_cone in cone_map.cones:
             state_cone = self.cone_convert_perception2StateCone(perception_cone)
-            cone_array = np.append(cone_array, state_cone)
+            cone_samples = np.append(cone_samples, state_cone)
 
         if IS_TIME_CODE_WITH_TIMER:
             cluster_start = timer()
  
-        self._cone_map.insert_new_points(cone_array)
-        real_cones = self._cone_map.get_real_cones()
+        # Add the new code samples to our clustering algo:
+        self._cone_map.insert_new_points(cone_samples)
+        # get the lates cones that we're sure about from our clustering algo:
+        real_cones , isNewCones = self._cone_map.get_real_cones()
 
         if IS_TIME_CODE_WITH_TIMER:
             print(f"clustering took {timer() - cluster_start} ms")
 
         
+        ''' Keep new data for later analysis: '''
+        if IS_COMPARE_GROUND_TRUTH and isNewCones:
+            self._compare["ConeEst"].append( [ real_cones ] )
+
+
 
         ''''Order Cones: '''
         if IS_TIME_CODE_WITH_TIMER:
@@ -349,7 +356,7 @@ class State:
         delta = car_data.car_measurments.steering_angle  # steering angle
         acceleration_long = car_data.imu_sensor.imu_measurments.acceleration.x
         acceleration_lat = car_data.imu_sensor.imu_measurments.acceleration.y
-        # some times this data exists:
+        # some times this data exists: (only in simulations)
         Vx = car_data.imu_sensor.imu_measurments.velocity.x
         Vy = car_data.imu_sensor.imu_measurments.velocity.y   
 
