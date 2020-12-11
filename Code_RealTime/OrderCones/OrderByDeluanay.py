@@ -217,6 +217,13 @@ class MapTrack:
         
         #Triangulate
         DT=Delaunay(Cones[:,:2]) #Triangulate only /w Cones
+        if 1==0:
+            import matplotlib.pyplot as plt
+            plt.triplot(Cones[:,0], Cones[:,1], DT.simplices)
+            plt.plot(Cones[:,0], Cones[:,1], 'o')
+            plt.show()
+
+
         ID=DT.find_simplex(self.CarCG) #attempt to find triangle which contains CarCG
         if ID==-1: #if CarCG isoutside of convex hull
             Cones=np.vstack([Cones,np.hstack([self.CarCG,0,FAKECONE])]) #add Car to Cones as a fake cone
@@ -224,7 +231,7 @@ class MapTrack:
             ID=DT.find_simplex(self.CarCG+0.5*self.CarLength*self.CarDir) #find first triangle to work with
         if ID == -1: return -1  # no cones in sight. couldnt build a track
 
-        graph = CreateGraph(DT, Cones[:,2])
+        graph = CreateGraph(DT, Cones[:,2])  # Cones[:,2] is B / Y  
 
         #Important note: DT.find_simplex returns -1 if point is outside triangulation.
         #But we use setdiff1d in both TriOne and FindNextTriangle so NewID can be of empty.
@@ -718,8 +725,8 @@ def CreateGraph(DT, ConeColor):
     graph-two dimensional array containg nodes with pointers and costs, each id of a
     node consists of two numbers, left cone id and right cone id
     '''
-
-    graph = np.empty([DT.points.shape[0],DT.points.shape[0]], dtype=object)
+    numPoints = DT.points.shape[0]
+    graph = np.empty([numPoints,numPoints], dtype=object)
 
     #go through each triangle and every edge of that triangle is a node
     for tria in DT.simplices:
